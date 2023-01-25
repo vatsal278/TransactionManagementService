@@ -1,0 +1,24 @@
+name: Build
+on: [pull_request, push]
+jobs:
+  test:
+    strategy:
+      matrix:
+        go-version: [1.18.x]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+#      - name: Configure git for private modules
+#        run: git config --global url."https://${TOKEN}:@github.com".insteadOf "https://github.com" # For dependant repos which are private
+
+      - name: Build
+        run: go build ./...

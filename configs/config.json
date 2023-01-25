@@ -1,0 +1,13 @@
+{
+  "service_route_version": "v1",
+  "server_config": {
+    "host": "",
+    "port": "80",
+    "version": "0.0.1",
+    "name": "transactionManagementService",
+    "log_level": "info"
+  },
+  "custom_svc": {
+    "data": "this is a custom config"
+  }
+}

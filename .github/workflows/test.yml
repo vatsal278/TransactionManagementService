@@ -1,0 +1,33 @@
+name: Test Cases
+on: [pull_request, push]
+jobs:
+  test:
+    strategy:
+      matrix:
+        go-version: [1.18.x]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+#      - name: Configure git for private modules
+#        run: git config --global url."https://${TOKEN}:@github.com".insteadOf "https://github.com" # For dependant repos which are private
+
+      - name: Run unit test and generate report
+        run: sh build/ci/go.test.sh
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          fail_ci_if_error: true
+#          token: ${{secrets.CODECOV_TOKEN}} # For private repositories, add codecov token to GitHub secrets
+          file: ./coverage.txt
+          flags: unittests
+          name: codecov-umbrella
