@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type DsResponse struct {
 	Data string
 }
@@ -10,6 +12,28 @@ type PingDs struct {
 
 type ColumnUpdate struct {
 	UpdateSet string
+}
+
+type GetTransaction struct {
+	AccountNumber int
+	TransactionId string
+	Amount        int
+	TransferTo    int
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	Status        string
+	Type          string
+	Comment       string
+}
+type NewTransaction struct {
+	UserId        string
+	AccountNumber int
+	TransactionId string
+	Amount        int
+	TransferTo    int
+	Status        string
+	Type          string
+	Comment       string
 }
 
 const Schema = `

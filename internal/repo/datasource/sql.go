@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/vatsal278/TransactionManagementService/internal/config"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
-	"log"
 	"strings"
 )
 
@@ -31,9 +30,6 @@ func queryFromMap(d map[string]interface{}, join string) string {
 		switch v.(type) {
 		case string:
 			f = append(f, fmt.Sprintf(`%s = '%s'`, k, v))
-		case model.ColumnUpdate:
-			a := v.(model.ColumnUpdate)
-			f = append(f, fmt.Sprintf("%s = %+v", k, a.UpdateSet))
 		default:
 			f = append(f, fmt.Sprintf(`%s = %v`, k, v))
 		}
@@ -52,56 +48,35 @@ func (d sqlDs) HealthCheck() bool {
 	return true
 }
 
-func (d sqlDs) Get(filter map[string]interface{}) ([]model.Account, error) {
+func (d sqlDs) Get(filter map[string]interface{}, limit int, offset int) ([]model.GetTransaction, error) {
 	//order the queries based on email address
-	var user model.Account
-	var users []model.Account
-	q := fmt.Sprintf("SELECT user_id, account_number, income, spends, created_on, updated_on, active_services, inactive_services FROM %s", d.table)
+	var transaction model.GetTransaction
+	var transactions []model.GetTransaction
+	q := fmt.Sprintf("SELECT transaction_id, account_number, amount, transfer_to, created_at, updated_at, status, type, comment FROM %s", d.table)
 	whereQuery := queryFromMap(filter, " AND ")
 	if whereQuery != "" {
 		q += " WHERE " + whereQuery
 	}
-	q += " ORDER BY account_number;"
+	q += fmt.Sprintf(" ORDER BY created_at LIMIT %d OFFSET %d ;", limit, offset)
 	rows, err := d.sqlSvc.Query(q)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
-		err = rows.Scan(&user.Id, &user.AccountNumber, &user.Income, &user.Spends, &user.CreatedOn, &user.UpdatedOn, &user.ActiveServices, &user.InactiveServices)
+		err = rows.Scan(&transaction.TransactionId, &transaction.AccountNumber, &transaction.Amount, &transaction.TransferTo, &transaction.CreatedAt, &transaction.UpdatedAt, &transaction.Status, &transaction.Type, &transaction.Comment)
 		if err != nil {
 			return nil, err
 		}
-		users = append(users, user)
+		transactions = append(transactions, transaction)
 	}
-	return users, nil
+	return transactions, nil
 }
 
-func (d sqlDs) Insert(user model.Account) error {
+func (d sqlDs) Insert(newTransaction model.NewTransaction) error {
 	queryString := fmt.Sprintf("INSERT INTO %s", d.table)
-	log.Print("(user_id, active_services, inactive_services) VALUES(?,?,?)", user.Id, user.ActiveServices, user.InactiveServices)
-	_, err := d.sqlSvc.Exec(queryString+"(user_id, active_services, inactive_services) VALUES(?,?,?)", user.Id, user.ActiveServices, user.InactiveServices)
+	_, err := d.sqlSvc.Exec(queryString+"(user_id, transaction_id, account_number, amount, transfer_to, status, type, comment) VALUES(?,?,?,?,?,?,?,?)", newTransaction.UserId, newTransaction.TransactionId, newTransaction.AccountNumber, newTransaction.Amount, newTransaction.TransferTo, newTransaction.Status, newTransaction.Type, newTransaction.Comment)
 	if err != nil {
 		return err
 	}
 	return err
-}
-
-func (d sqlDs) Update(filterSet map[string]interface{}, filterWhere map[string]interface{}) error {
-	queryString := fmt.Sprintf("UPDATE %s ", d.table)
-
-	setQuery := queryFromMap(filterSet, " , ")
-	if setQuery != "" {
-		queryString += " SET " + setQuery
-	}
-	whereQuery := queryFromMap(filterWhere, " AND ")
-	if whereQuery != "" {
-		queryString += " WHERE " + whereQuery
-	}
-	queryString += " ;"
-	log.Print(queryString)
-	_, err := d.sqlSvc.Exec(queryString)
-	if err != nil {
-		return err
-	}
-	return nil
 }

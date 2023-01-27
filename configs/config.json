@@ -7,7 +7,19 @@
     "name": "transactionManagementService",
     "log_level": "info"
   },
-  "custom_svc": {
-    "data": "this is a custom config"
+  "db_svc": {
+    "dbDriver" : "mysql",
+    "dbUser" : "root",
+    "dbPass" : "pass",
+    "dbName" : "accmgmt",
+    "tableName" : "accdatabase",
+    "dbHost" : "localhost",
+    "dbPort" : "9075"
+  },
+  "secret_key": "secret",
+  "cache": {
+    "port": "6379",
+    "host": "localhost",
+    "duration":"5m"
   }
 }
