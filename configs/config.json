@@ -1,5 +1,5 @@
 {
-  "service_route_version": "v1",
+  "service_route_version": "microbank/v1",
   "server_config": {
     "host": "",
     "port": "80",
@@ -11,8 +11,8 @@
     "dbDriver" : "mysql",
     "dbUser" : "root",
     "dbPass" : "pass",
-    "dbName" : "accmgmt",
-    "tableName" : "accdatabase",
+    "dbName" : "transactionmgmt",
+    "tableName" : "transactiondatabase",
     "dbHost" : "localhost",
     "dbPort" : "9075"
   },

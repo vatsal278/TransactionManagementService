@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/PereRohit/util/config"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
 	"github.com/vatsal278/TransactionManagementService/internal/repo/authentication"
 	"github.com/vatsal278/go-redis-cache"
@@ -43,15 +44,6 @@ type DbCfg struct {
 }
 type JWTSvc struct {
 	JwtSvc authentication.JWTService
-}
-type MsgQueueCfg struct {
-	SvcUrl                  string   `json:"service_url"`
-	AllowedUrl              []string `json:"allowed_url"`
-	UserAgent               string   `json:"user_agent"`
-	UrlCheck                bool     `json:"url_check_flag"`
-	NewAccountChannel       string   `json:"new_account_channel"`
-	ActivatedAccountChannel string   `json:"account_activation_channel"`
-	Key                     string   `json:"private_key"`
 }
 
 type CookieStruct struct {
@@ -106,7 +98,7 @@ func InitSvcConfig(cfg Config) *SvcConfig {
 	cacher := redis.NewCacher(redis.Config{Addr: cfg.Cache.Host + ":" + cfg.Cache.Port})
 	duration, err := time.ParseDuration(cfg.Cache.Duration)
 	if err != nil {
-		return nil
+		panic(err.Error())
 	}
 	cfg.Cache.Time = duration
 	return &SvcConfig{

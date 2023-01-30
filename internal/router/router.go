@@ -15,7 +15,7 @@ import (
 func Register(svcCfg *config.SvcConfig) *mux.Router {
 	m := mux.NewRouter()
 
-    // group all routes for specific version. e.g.: /v1
+	// group all routes for specific version. e.g.: /v1
 	if svcCfg.ServiceRouteVersion != "" {
 		m = m.PathPrefix("/" + svcCfg.ServiceRouteVersion).Subrouter()
 	}
@@ -36,11 +36,12 @@ func Register(svcCfg *config.SvcConfig) *mux.Router {
 }
 
 func attachTransactionManagementServiceRoutes(m *mux.Router, svcCfg *config.SvcConfig) *mux.Router {
-	dataSource := datasource.NewDummyDs(&svcCfg.DummySvc)
+	dataSource := datasource.NewSql(svcCfg.DbSvc, svcCfg.Cfg.DataBase.TableName)
 
 	svc := handler.NewTransactionManagementService(dataSource)
 
-	m.HandleFunc("/ping", svc.Ping).Methods(http.MethodPost)
+	m.HandleFunc("/transactions", svc.GetTransactions).Methods(http.MethodGet)
+	m.HandleFunc("/transactions/new", svc.NewTransaction).Methods(http.MethodPost)
 
 	return m
 }

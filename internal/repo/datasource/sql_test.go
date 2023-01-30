@@ -86,7 +86,6 @@ func TestGet(t *testing.T) {
 					table:  "newTemp",
 				}
 				mock.ExpectQuery("SELECT transaction_id, account_number, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE user_id = '1234' AND account_number = 1 ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnRows(sqlmock.NewRows([]string{"transaction_id", "account_number", "amount", "transfer_to", "created_at", "updated_at", "status", "type", "comment"}).AddRow("0000-1111-2222-3333", 1, 1000, 1234567890, time.Now(), time.Now(), "approved", "debit", "no comments"))
-				t.Log(mock.ExpectationsWereMet())
 				return dB
 			},
 			validator: func(rows []model.GetTransaction, err error) {
@@ -101,27 +100,35 @@ func TestGet(t *testing.T) {
 				}
 				if err != nil {
 					t.Errorf("Want: %v, Got: %v", nil, err)
+					return
 				}
 				if !reflect.DeepEqual(rows[0].TransactionId, temp.TransactionId) {
 					t.Errorf("Want: %v, Got: %v", temp.TransactionId, rows[0].TransactionId)
+					return
 				}
 				if !reflect.DeepEqual(rows[0].AccountNumber, temp.AccountNumber) {
 					t.Errorf("Want: %v, Got: %v", temp.AccountNumber, rows[0].AccountNumber)
+					return
 				}
 				if !reflect.DeepEqual(rows[0].Amount, temp.Amount) {
 					t.Errorf("Want: %v, Got: %v", temp.Amount, rows[0].Amount)
+					return
 				}
 				if !reflect.DeepEqual(rows[0].TransferTo, temp.TransferTo) {
 					t.Errorf("Want: %v, Got: %v", temp.TransferTo, rows[0].TransferTo)
+					return
 				}
 				if !reflect.DeepEqual(rows[0].Type, temp.Type) {
 					t.Errorf("Want: %v, Got: %v", temp.Type, rows[0].Type)
+					return
 				}
 				if !reflect.DeepEqual(rows[0].Status, temp.Status) {
 					t.Errorf("Want: %v, Got: %v", temp.Status, rows[0].Status)
+					return
 				}
 				if !reflect.DeepEqual(rows[0].Comment, temp.Comment) {
 					t.Errorf("Want: %v, Got: %v", temp.Comment, rows[0].Comment)
+					return
 				}
 
 			},
@@ -293,116 +300,3 @@ func TestInsert(t *testing.T) {
 		})
 	}
 }
-
-//func TestUpdate(t *testing.T) {
-//	tests := []struct {
-//		name        string
-//		tableName   string
-//		dataSet     map[string]interface{}
-//		dataWhere   map[string]interface{}
-//		setupFunc   func() (sqlDs, sqlmock.Sqlmock)
-//		cleanupFunc func()
-//		filter      map[string]interface{}
-//		validator   func(error, sqlmock.Sqlmock)
-//	}{
-//		{
-//			name:      "SUCCESS:: Update",
-//			dataSet:   map[string]interface{}{"income": model.ColumnUpdate{UpdateSet: "income+100"}},
-//			dataWhere: map[string]interface{}{"user_id": "100"},
-//			setupFunc: func() (sqlDs, sqlmock.Sqlmock) {
-//				db, mock, err := sqlmock.New()
-//				if err != nil {
-//					t.Fail()
-//				}
-//				dB := sqlDs{
-//					sqlSvc: db,
-//					table:  "newTemp",
-//				}
-//				mock.ExpectExec(regexp.QuoteMeta("UPDATE newTemp  SET income = income+100 WHERE user_id = '100' ;")).WillReturnError(nil).WillReturnResult(sqlmock.NewResult(1, 1))
-//				return dB, mock
-//			},
-//			validator: func(err error, mock sqlmock.Sqlmock) {
-//				if mock.ExpectationsWereMet() != nil {
-//					t.Errorf("Want: %v, Got: %v", nil, err.Error())
-//					return
-//				}
-//				if err != nil {
-//					t.Errorf("Want: %v, Got: %v", nil, err.Error())
-//					return
-//				}
-//			},
-//		},
-//		{
-//			name:      "Success:: Update:: removing and inserting",
-//			dataSet:   map[string]interface{}{"active_services": model.ColumnUpdate{UpdateSet: "JSON_INSERT(active_services, '$.\"1\"', JSON_OBJECT())"}, "inactive_services": model.ColumnUpdate{UpdateSet: "JSON_REMOVE(inactive_services, '$.\"1\"')"}},
-//			dataWhere: map[string]interface{}{"user_id": "1233"},
-//			setupFunc: func() (sqlDs, sqlmock.Sqlmock) {
-//				db, mock, err := sqlmock.New()
-//				if err != nil {
-//					t.Fail()
-//				}
-//				dB := sqlDs{
-//					sqlSvc: db,
-//					table:  "newTemp",
-//				}
-//				mock.ExpectExec(regexp.QuoteMeta("UPDATE newTemp SET active_services = JSON_INSERT(active_services, '$.\"1\"', JSON_OBJECT()) , inactive_services = JSON_REMOVE(inactive_services, '$.\"1\"') WHERE user_id = '1233' ;")).WillReturnError(nil).WillReturnResult(sqlmock.NewResult(1, 1))
-//				return dB, mock
-//			},
-//			validator: func(err error, mock sqlmock.Sqlmock) {
-//				if mock.ExpectationsWereMet() != nil {
-//					t.Errorf("Want: %v, Got: %v", nil, err.Error())
-//					return
-//				}
-//				if err != nil {
-//					t.Errorf("Want: %v, Got: %v", nil, err.Error())
-//					return
-//				}
-//			},
-//		},
-//		{
-//			name:      "Failure:: Update::",
-//			dataSet:   map[string]interface{}{"active_services": model.ColumnUpdate{UpdateSet: "JSON_INSERT(active_services, '$.\"1\"', JSON_OBJECT())"}},
-//			dataWhere: map[string]interface{}{"abc": "1233"},
-//			setupFunc: func() (sqlDs, sqlmock.Sqlmock) {
-//				db, mock, err := sqlmock.New()
-//				if err != nil {
-//					t.Fail()
-//				}
-//				dB := sqlDs{
-//					sqlSvc: db,
-//					table:  "newTemp",
-//				}
-//				mock.ExpectExec(regexp.QuoteMeta("UPDATE newTemp  SET active_services = JSON_INSERT(active_services, '$.\"1\"', JSON_OBJECT()) WHERE abc = '1233' ;")).WillReturnError(errors.New("unknown column abc")).WillReturnResult(sqlmock.NewResult(1, 1))
-//				return dB, mock
-//			},
-//			validator: func(err error, mock sqlmock.Sqlmock) {
-//				if mock.ExpectationsWereMet() != nil {
-//					t.Errorf("Want: %v, Got: %v", nil, err.Error())
-//					return
-//				}
-//				if err.Error() != errors.New("unknown column abc").Error() {
-//					t.Errorf("Want: %v, Got: %v", "unknown column abc", err.Error())
-//					return
-//				}
-//			},
-//		},
-//	}
-//	// to execute the tests in the table
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			db, mock := tt.setupFunc()
-//			// STEP 2: call the test function
-//			err := db.Update(tt.dataSet, tt.dataWhere)
-//
-//			// STEP 3: validation of output
-//			if tt.validator != nil {
-//				tt.validator(err, mock)
-//			}
-//
-//			// STEP 4: clean up/remove up all instances for the specific test case
-//			if tt.cleanupFunc != nil {
-//				tt.cleanupFunc()
-//			}
-//		})
-//	}
-//}

@@ -1,14 +1,16 @@
 package handler
 
 import (
-	"fmt"
+	"github.com/PereRohit/util/log"
+	"github.com/PereRohit/util/request"
+	"github.com/vatsal278/TransactionManagementService/internal/codes"
+	"github.com/vatsal278/TransactionManagementService/internal/model"
+	"github.com/vatsal278/TransactionManagementService/pkg/session"
 	"net/http"
 
-	"github.com/PereRohit/util/request"
 	"github.com/PereRohit/util/response"
 
 	"github.com/vatsal278/TransactionManagementService/internal/logic"
-	"github.com/vatsal278/TransactionManagementService/internal/model"
 	"github.com/vatsal278/TransactionManagementService/internal/repo/datasource"
 )
 
@@ -18,18 +20,19 @@ const TransactionManagementServiceName = "transactionManagementService"
 
 type TransactionManagementServiceHandler interface {
 	HealthChecker
-	Ping(w http.ResponseWriter, r *http.Request)
+	GetTransactions(w http.ResponseWriter, r *http.Request)
+	NewTransaction(w http.ResponseWriter, r *http.Request)
 }
 
 type transactionManagementService struct {
 	logic logic.TransactionManagementServiceLogicIer
 }
 
-func NewTransactionManagementService(ds datasource.DataSource) TransactionManagementServiceHandler {
+func NewTransactionManagementService(ds datasource.DataSourceI) TransactionManagementServiceHandler {
 	svc := &transactionManagementService{
 		logic: logic.NewTransactionManagementServiceLogic(ds),
 	}
-    AddHealthChecker(svc)
+	AddHealthChecker(svc)
 	return svc
 }
 
@@ -43,20 +46,36 @@ func (svc transactionManagementService) HealthCheck() (svcName string, msg strin
 		}
 	}()
 	stat = svc.logic.HealthCheck()
-    set = true
+	set = true
 	return
 }
 
-func (svc transactionManagementService) Ping(w http.ResponseWriter, r *http.Request) {
-	req := &model.PingRequest{}
-
-	suggestedCode, err := request.FromJson(r, req)
-	if err != nil {
-		response.ToJson(w, suggestedCode, fmt.Sprintf("FAILED: %s", err.Error()), nil)
+func (svc transactionManagementService) GetTransactions(w http.ResponseWriter, r *http.Request) {
+	sessionStruct := session.GetSession(r.Context())
+	session, ok := sessionStruct.(model.SessionStruct)
+	if !ok {
+		response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrAssertUserid), nil)
 		return
 	}
-	// call logic
-	resp := svc.logic.Ping(req)
+	resp := svc.logic.GetTransactions(session.UserId)
 	response.ToJson(w, resp.Status, resp.Message, resp.Data)
-	return
+}
+
+func (svc transactionManagementService) NewTransaction(w http.ResponseWriter, r *http.Request) {
+	sessionStruct := session.GetSession(r.Context())
+	session, ok := sessionStruct.(model.SessionStruct)
+	if !ok {
+		response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrAssertUserid), nil)
+		return
+	}
+	var newTransaction model.NewTransaction
+	status, err := request.FromJson(r, &newTransaction)
+	if err != nil {
+		log.Error(err)
+		response.ToJson(w, status, err.Error(), nil)
+		return
+	}
+	newTransaction.UserId = session.UserId
+	resp := svc.logic.NewTransaction(newTransaction)
+	response.ToJson(w, resp.Status, resp.Message, resp.Data)
 }

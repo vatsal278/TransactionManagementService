@@ -48,6 +48,10 @@ const (
 	ErrUpdatingTransaction
 	ErrUpdatingServices
 	ErrRedis
+	ErrNewTransaction
+	ErrUuid
+	ErrGetTransaction
+	ErrNoTransaction
 )
 
 var errCodes = map[errCode]string{
@@ -92,6 +96,10 @@ var errCodes = map[errCode]string{
 	ErrUpdatingTransaction: "error updating transaction details",
 	ErrUpdatingServices:    "error updating services",
 	ErrRedis:               "error saving cache in redis",
+	ErrNewTransaction:      "error updating new transaction",
+	ErrUuid:                "error creating new uuid",
+	ErrGetTransaction:      "error fetching transactions",
+	ErrNoTransaction:       "no transactions were found",
 }
 
 func GetErr(code errCode) string {

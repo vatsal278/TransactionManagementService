@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-//go:generate mockgen --build_flags=--mod=mod --destination=./../../../pkg/mock/mock_jwt.go --package=mock github.com/vatsal278/AccountManagmentSvc/internal/repo/authentication JWTService
+//go:generate mockgen --build_flags=--mod=mod --destination=./../../../pkg/mock/mock_jwt.go --package=mock github.com/vatsal278/TransactionManagementService/internal/repo/authentication JWTService
 
 type JWTService interface {
 	GenerateToken(signingMethod jwt.SigningMethod, userId string, validity time.Duration) (string, error)
