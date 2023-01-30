@@ -7,6 +7,7 @@ import (
 	"github.com/vatsal278/TransactionManagementService/internal/model"
 	"github.com/vatsal278/TransactionManagementService/pkg/session"
 	"net/http"
+	"strconv"
 
 	"github.com/PereRohit/util/response"
 
@@ -57,7 +58,22 @@ func (svc transactionManagementService) GetTransactions(w http.ResponseWriter, r
 		response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrAssertUserid), nil)
 		return
 	}
-	resp := svc.logic.GetTransactions(session.UserId)
+	queryParams := r.URL.Query()
+	limit, err := strconv.Atoi(queryParams.Get("limit"))
+	if err != nil {
+		limit = 5
+		//log.Error(err)
+		//response.ToJson(w, http.StatusBadRequest, err.Error(), nil)
+		//return
+	}
+	offset, err := strconv.Atoi(queryParams.Get("offset"))
+	if err != nil {
+		offset = 0
+		//log.Error(err)
+		//response.ToJson(w, http.StatusBadRequest, err.Error(), nil)
+		//return
+	}
+	resp := svc.logic.GetTransactions(session.UserId, limit, offset)
 	response.ToJson(w, resp.Status, resp.Message, resp.Data)
 }
 

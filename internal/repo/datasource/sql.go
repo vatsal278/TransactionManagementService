@@ -3,6 +3,7 @@ package datasource
 import (
 	"database/sql"
 	"fmt"
+	"github.com/PereRohit/util/log"
 	"github.com/vatsal278/TransactionManagementService/internal/config"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
 	"strings"
@@ -48,28 +49,43 @@ func (d sqlDs) HealthCheck() bool {
 	return true
 }
 
-func (d sqlDs) Get(filter map[string]interface{}, limit int, offset int) ([]model.GetTransaction, error) {
+func (d sqlDs) Get(filter map[string]interface{}, limit int, offset int) ([]model.GetTransaction, int, error) {
 	//order the queries based on email address
 	var transaction model.GetTransaction
 	var transactions []model.GetTransaction
+	var count int
 	q := fmt.Sprintf("SELECT transaction_id, account_number, amount, transfer_to, created_at, updated_at, status, type, comment FROM %s", d.table)
 	whereQuery := queryFromMap(filter, " AND ")
 	if whereQuery != "" {
 		q += " WHERE " + whereQuery
 	}
+	queryCount := fmt.Sprintf("SELECT COUNT(*) FROM %s", d.table) + " WHERE " + whereQuery
+	rowsCount, err := d.sqlSvc.Query(queryCount)
+	if err != nil {
+		return nil, 0, err
+	}
+	for rowsCount.Next() {
+		err = rowsCount.Scan(&count)
+		if err != nil {
+			return nil, 0, err
+		}
+	}
+	rowsCount.Close()
+	log.Info(count)
 	q += fmt.Sprintf(" ORDER BY created_at LIMIT %d OFFSET %d ;", limit, offset)
 	rows, err := d.sqlSvc.Query(q)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	for rows.Next() {
 		err = rows.Scan(&transaction.TransactionId, &transaction.AccountNumber, &transaction.Amount, &transaction.TransferTo, &transaction.CreatedAt, &transaction.UpdatedAt, &transaction.Status, &transaction.Type, &transaction.Comment)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		transactions = append(transactions, transaction)
 	}
-	return transactions, nil
+	rows.Close()
+	return transactions, count, nil
 }
 
 func (d sqlDs) Insert(newTransaction model.NewTransaction) error {

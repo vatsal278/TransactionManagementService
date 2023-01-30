@@ -17,7 +17,7 @@ type ColumnUpdate struct {
 type GetTransaction struct {
 	AccountNumber int
 	TransactionId string
-	Amount        int
+	Amount        float64
 	TransferTo    int
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
@@ -29,7 +29,7 @@ type NewTransaction struct {
 	UserId        string
 	AccountNumber int
 	TransactionId string
-	Amount        int
+	Amount        float64
 	TransferTo    int
 	Status        string
 	Type          string

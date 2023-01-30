@@ -1,6 +1,7 @@
 package router
 
 import (
+	middleware2 "github.com/vatsal278/TransactionManagementService/internal/middleware"
 	"net/http"
 
 	"github.com/PereRohit/util/constant"
@@ -37,11 +38,14 @@ func Register(svcCfg *config.SvcConfig) *mux.Router {
 
 func attachTransactionManagementServiceRoutes(m *mux.Router, svcCfg *config.SvcConfig) *mux.Router {
 	dataSource := datasource.NewSql(svcCfg.DbSvc, svcCfg.Cfg.DataBase.TableName)
-
+	middleware := middleware2.NewTransactionMgmtMiddleware(svcCfg)
 	svc := handler.NewTransactionManagementService(dataSource)
 
-	m.HandleFunc("/transactions", svc.GetTransactions).Methods(http.MethodGet)
-	m.HandleFunc("/transactions/new", svc.NewTransaction).Methods(http.MethodPost)
-
+	//m.HandleFunc("/transactions", svc.GetTransactions).Methods(http.MethodGet)
+	//m.HandleFunc("/transactions/new", svc.NewTransaction).Methods(http.MethodPost)
+	router := m.PathPrefix("").Subrouter()
+	router.HandleFunc("/transactions", svc.GetTransactions).Methods(http.MethodGet)
+	router.HandleFunc("/transactions/new", svc.NewTransaction).Methods(http.MethodPost)
+	router.Use(middleware.ExtractUser)
 	return m
 }

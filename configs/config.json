@@ -2,7 +2,7 @@
   "service_route_version": "microbank/v1",
   "server_config": {
     "host": "",
-    "port": "80",
+    "port": "9070",
     "version": "0.0.1",
     "name": "transactionManagementService",
     "log_level": "info"

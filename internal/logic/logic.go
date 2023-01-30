@@ -9,6 +9,7 @@ import (
 	"github.com/vatsal278/TransactionManagementService/internal/codes"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
 	"github.com/vatsal278/TransactionManagementService/internal/repo/datasource"
+	"math"
 	"net/http"
 	"time"
 )
@@ -17,7 +18,7 @@ import (
 
 type TransactionManagementServiceLogicIer interface {
 	HealthCheck() bool
-	GetTransactions(id string) *respModel.Response
+	GetTransactions(id string, limit int, offset int) *respModel.Response
 	NewTransaction(transaction model.NewTransaction) *respModel.Response
 }
 
@@ -36,8 +37,8 @@ func (l transactionManagementServiceLogic) HealthCheck() bool {
 	return l.DsSvc.HealthCheck()
 }
 
-func (l transactionManagementServiceLogic) GetTransactions(id string) *respModel.Response {
-	transactions, err := l.DsSvc.Get(map[string]interface{}{"user_id": id}, 10, 0)
+func (l transactionManagementServiceLogic) GetTransactions(id string, limit int, offset int) *respModel.Response {
+	transactions, count, err := l.DsSvc.Get(map[string]interface{}{"user_id": id}, limit, offset)
 	if err != nil {
 		log.Error(err)
 		return &respModel.Response{
@@ -53,7 +54,10 @@ func (l transactionManagementServiceLogic) GetTransactions(id string) *respModel
 			Data:    nil,
 		}
 	}
-	resp := model.GetTransaction{}
+
+	currentPage := (offset / limit) + 1
+	totalPages := int(math.Ceil(float64(count) / float64(limit)))
+	resp := model.PaginatedResponse{Response: transactions, Pagination: model.Paginate{CurrentPage: currentPage, Limit: limit, TotalCount: count, TotalPage: totalPages}}
 	return &respModel.Response{
 		Status:  http.StatusOK,
 		Message: "SUCCESS",

@@ -67,7 +67,7 @@ func TestGet(t *testing.T) {
 		setupFunc   func() sqlDs
 		cleanupFunc func()
 		filter      map[string]interface{}
-		validator   func([]model.GetTransaction, error)
+		validator   func([]model.GetTransaction, int, error)
 		dbInterface DataSourceI
 	}{
 		{
@@ -85,10 +85,11 @@ func TestGet(t *testing.T) {
 					sqlSvc: db,
 					table:  "newTemp",
 				}
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(*) FROM newTemp WHERE user_id = '1234' AND account_number = 1")).WillReturnError(nil).WillReturnRows(sqlmock.NewRows([]string{"transaction_id"}).AddRow("1").AddRow("2").AddRow("3"))
 				mock.ExpectQuery("SELECT transaction_id, account_number, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE user_id = '1234' AND account_number = 1 ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnRows(sqlmock.NewRows([]string{"transaction_id", "account_number", "amount", "transfer_to", "created_at", "updated_at", "status", "type", "comment"}).AddRow("0000-1111-2222-3333", 1, 1000, 1234567890, time.Now(), time.Now(), "approved", "debit", "no comments"))
 				return dB
 			},
-			validator: func(rows []model.GetTransaction, err error) {
+			validator: func(rows []model.GetTransaction, count int, err error) {
 				temp := model.GetTransaction{
 					TransactionId: "0000-1111-2222-3333",
 					AccountNumber: 1,
@@ -101,6 +102,9 @@ func TestGet(t *testing.T) {
 				if err != nil {
 					t.Errorf("Want: %v, Got: %v", nil, err)
 					return
+				}
+				if count != 3 {
+					t.Errorf("Want: %v, Got: %v", 3, count)
 				}
 				if !reflect.DeepEqual(rows[0].TransactionId, temp.TransactionId) {
 					t.Errorf("Want: %v, Got: %v", temp.TransactionId, rows[0].TransactionId)
@@ -136,7 +140,7 @@ func TestGet(t *testing.T) {
 		{
 			name: "failure::Get::scan error", //scan should return an error
 			filter: map[string]interface{}{
-				"user_id": "12345",
+				"user_id": "1234",
 			},
 			setupFunc: func() sqlDs {
 				db, mock, err := sqlmock.New()
@@ -147,10 +151,11 @@ func TestGet(t *testing.T) {
 					sqlSvc: db,
 					table:  "newTemp",
 				}
-				mock.ExpectQuery("SELECT transaction_id, account_number, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE user_id = '12345' ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnRows(sqlmock.NewRows([]string{"transaction_id", "account_number", "amount", "transfer_to", "created_at", "updated_at", "status", "type", "comment"}).AddRow(true, 1, 1000, 1234567890, time.Now(), "abc", "approved", "debit", "no comments"))
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(*) FROM newTemp WHERE user_id = '1234'")).WillReturnError(nil).WillReturnRows(sqlmock.NewRows([]string{"transaction_id"}).AddRow("1").AddRow("2").AddRow("3"))
+				mock.ExpectQuery("SELECT transaction_id, account_number, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE user_id = '1234' ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnRows(sqlmock.NewRows([]string{"transaction_id", "account_number", "amount", "transfer_to", "created_at", "updated_at", "status", "type", "comment"}).AddRow(true, 1, 1000, 1234567890, time.Now(), "abc", "approved", "debit", "no comments"))
 				return dB
 			},
-			validator: func(rows []model.GetTransaction, err error) {
+			validator: func(rows []model.GetTransaction, count int, err error) {
 				if !strings.Contains(err.Error(), "sql: Scan error on column") {
 					t.Errorf("Want: %v, Got: %v", "sql: Scan error on column", err.Error())
 				}
@@ -168,10 +173,11 @@ func TestGet(t *testing.T) {
 					sqlSvc: db,
 					table:  "newTemp",
 				}
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(*) FROM newTemp WHERE user_id = '1234'")).WillReturnError(nil).WillReturnRows(sqlmock.NewRows([]string{"transaction_id"}).AddRow("1").AddRow("2").AddRow("3"))
 				mock.ExpectQuery("SELECT transaction_id, account_number, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE userid = '1234' ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnError(errors.New("Unknown column"))
 				return dB
 			},
-			validator: func(rows []model.GetTransaction, err error) {
+			validator: func(rows []model.GetTransaction, count int, err error) {
 				if !strings.Contains(err.Error(), "Unknown column") {
 					t.Errorf("Want: %v, Got: %v", "Unknown column", err)
 				}
@@ -185,11 +191,11 @@ func TestGet(t *testing.T) {
 			// STEP 1: seting up all instances for the specific test case
 			db := tt.setupFunc()
 			// STEP 2: call the test function
-			rows, err := db.Get(tt.filter, 1, 2)
+			rows, count, err := db.Get(tt.filter, 1, 2)
 
 			// STEP 3: validation of output
 			if tt.validator != nil {
-				tt.validator(rows, err)
+				tt.validator(rows, count, err)
 			}
 
 			// STEP 4: clean up/remove up all instances for the specific test case

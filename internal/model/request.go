@@ -2,7 +2,7 @@ package model
 
 type UpdateTransaction struct {
 	AccountNumber   int
-	Amount          int
+	Amount          float64
 	TransactionType string
 }
 type SessionStruct struct {
