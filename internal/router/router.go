@@ -39,13 +39,17 @@ func Register(svcCfg *config.SvcConfig) *mux.Router {
 func attachTransactionManagementServiceRoutes(m *mux.Router, svcCfg *config.SvcConfig) *mux.Router {
 	dataSource := datasource.NewSql(svcCfg.DbSvc, svcCfg.Cfg.DataBase.TableName)
 	middleware := middleware2.NewTransactionMgmtMiddleware(svcCfg)
-	svc := handler.NewTransactionManagementService(dataSource)
+	svc := handler.NewTransactionManagementService(dataSource, svcCfg.Cfg.AccSvc)
 
-	//m.HandleFunc("/transactions", svc.GetTransactions).Methods(http.MethodGet)
-	//m.HandleFunc("/transactions/new", svc.NewTransaction).Methods(http.MethodPost)
 	router := m.PathPrefix("").Subrouter()
-	router.HandleFunc("/transactions", svc.GetTransactions).Methods(http.MethodGet)
-	router.HandleFunc("/transactions/new", svc.NewTransaction).Methods(http.MethodPost)
+	router.HandleFunc("", svc.NewTransaction).Methods(http.MethodPost)
 	router.Use(middleware.ExtractUser)
+
+	router2 := m.PathPrefix("").Subrouter()
+	router2.HandleFunc("", svc.GetTransactions).Methods(http.MethodGet)
+	router2.Use(middleware.ExtractUser)
+	router2.Use(middleware.Cacher(true))
+
 	return m
+
 }

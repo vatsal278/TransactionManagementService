@@ -3,7 +3,6 @@ package datasource
 import (
 	"database/sql"
 	"fmt"
-	"github.com/PereRohit/util/log"
 	"github.com/vatsal278/TransactionManagementService/internal/config"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
 	"strings"
@@ -49,17 +48,19 @@ func (d sqlDs) HealthCheck() bool {
 	return true
 }
 
-func (d sqlDs) Get(filter map[string]interface{}, limit int, offset int) ([]model.GetTransaction, int, error) {
+func (d sqlDs) Get(filter map[string]interface{}, limit int, offset int) ([]model.Transaction, int, error) {
 	//order the queries based on email address
-	var transaction model.GetTransaction
-	var transactions []model.GetTransaction
+	var transaction model.Transaction
+	var transactions []model.Transaction
 	var count int
-	q := fmt.Sprintf("SELECT transaction_id, account_number, amount, transfer_to, created_at, updated_at, status, type, comment FROM %s", d.table)
+	//include user_id in model and also query it for internal use but never pass it into response
+	q := fmt.Sprintf("SELECT transaction_id, account_number, user_id, amount, transfer_to, created_at, updated_at, status, type, comment FROM %s", d.table)
 	whereQuery := queryFromMap(filter, " AND ")
 	if whereQuery != "" {
-		q += " WHERE " + whereQuery
+		whereQuery = " WHERE " + whereQuery
+		q += whereQuery
 	}
-	queryCount := fmt.Sprintf("SELECT COUNT(*) FROM %s", d.table) + " WHERE " + whereQuery
+	queryCount := fmt.Sprintf("SELECT COUNT(`transaction_id`) FROM %s %s", d.table, whereQuery)
 	rowsCount, err := d.sqlSvc.Query(queryCount)
 	if err != nil {
 		return nil, 0, err
@@ -70,15 +71,13 @@ func (d sqlDs) Get(filter map[string]interface{}, limit int, offset int) ([]mode
 			return nil, 0, err
 		}
 	}
-	rowsCount.Close()
-	log.Info(count)
 	q += fmt.Sprintf(" ORDER BY created_at LIMIT %d OFFSET %d ;", limit, offset)
 	rows, err := d.sqlSvc.Query(q)
 	if err != nil {
 		return nil, 0, err
 	}
 	for rows.Next() {
-		err = rows.Scan(&transaction.TransactionId, &transaction.AccountNumber, &transaction.Amount, &transaction.TransferTo, &transaction.CreatedAt, &transaction.UpdatedAt, &transaction.Status, &transaction.Type, &transaction.Comment)
+		err = rows.Scan(&transaction.TransactionId, &transaction.AccountNumber, &transaction.UserId, &transaction.Amount, &transaction.TransferTo, &transaction.CreatedAt, &transaction.UpdatedAt, &transaction.Status, &transaction.Type, &transaction.Comment)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -88,9 +87,9 @@ func (d sqlDs) Get(filter map[string]interface{}, limit int, offset int) ([]mode
 	return transactions, count, nil
 }
 
-func (d sqlDs) Insert(newTransaction model.NewTransaction) error {
+func (d sqlDs) Insert(transaction model.Transaction) error {
 	queryString := fmt.Sprintf("INSERT INTO %s", d.table)
-	_, err := d.sqlSvc.Exec(queryString+"(user_id, transaction_id, account_number, amount, transfer_to, status, type, comment) VALUES(?,?,?,?,?,?,?,?)", newTransaction.UserId, newTransaction.TransactionId, newTransaction.AccountNumber, newTransaction.Amount, newTransaction.TransferTo, newTransaction.Status, newTransaction.Type, newTransaction.Comment)
+	_, err := d.sqlSvc.Exec(queryString+"(user_id, transaction_id, account_number, amount, transfer_to, status, type, comment) VALUES(?,?,?,?,?,?,?,?)", transaction.UserId, transaction.TransactionId, transaction.AccountNumber, transaction.Amount, transaction.TransferTo, transaction.Status, transaction.Type, transaction.Comment)
 	if err != nil {
 		return err
 	}

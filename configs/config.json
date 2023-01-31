@@ -1,5 +1,5 @@
 {
-  "service_route_version": "microbank/v1",
+  "service_route_version": "microbank/v1/transactions",
   "server_config": {
     "host": "",
     "port": "9070",
@@ -20,6 +20,11 @@
   "cache": {
     "port": "6379",
     "host": "localhost",
-    "duration":"5m"
+    "duration":"15s"
+  },
+  "acc_svc": {
+    "host": "http://localhost",
+    "port": "9080",
+    "route": "/update/transaction"
   }
 }

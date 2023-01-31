@@ -6,13 +6,12 @@ type CacheResponse struct {
 	ContentType string
 }
 type PaginatedResponse struct {
-	Response   []GetTransaction
+	Response   []Transaction
 	Pagination Paginate
 }
 
 type Paginate struct {
 	CurrentPage int
-	Limit       int
-	TotalCount  int
+	NextPage    int
 	TotalPage   int
 }

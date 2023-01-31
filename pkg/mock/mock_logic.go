@@ -36,17 +36,17 @@ func (m *MockTransactionManagementServiceLogicIer) EXPECT() *MockTransactionMana
 }
 
 // GetTransactions mocks base method.
-func (m *MockTransactionManagementServiceLogicIer) GetTransactions(arg0 string) *model.Response {
+func (m *MockTransactionManagementServiceLogicIer) GetTransactions(arg0 string, arg1, arg2 int) *model.Response {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTransactions", arg0)
+	ret := m.ctrl.Call(m, "GetTransactions", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*model.Response)
 	return ret0
 }
 
 // GetTransactions indicates an expected call of GetTransactions.
-func (mr *MockTransactionManagementServiceLogicIerMockRecorder) GetTransactions(arg0 interface{}) *gomock.Call {
+func (mr *MockTransactionManagementServiceLogicIerMockRecorder) GetTransactions(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransactions", reflect.TypeOf((*MockTransactionManagementServiceLogicIer)(nil).GetTransactions), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransactions", reflect.TypeOf((*MockTransactionManagementServiceLogicIer)(nil).GetTransactions), arg0, arg1, arg2)
 }
 
 // HealthCheck mocks base method.

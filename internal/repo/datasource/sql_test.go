@@ -67,7 +67,7 @@ func TestGet(t *testing.T) {
 		setupFunc   func() sqlDs
 		cleanupFunc func()
 		filter      map[string]interface{}
-		validator   func([]model.GetTransaction, int, error)
+		validator   func([]model.Transaction, int, error)
 		dbInterface DataSourceI
 	}{
 		{
@@ -85,14 +85,15 @@ func TestGet(t *testing.T) {
 					sqlSvc: db,
 					table:  "newTemp",
 				}
-				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(*) FROM newTemp WHERE user_id = '1234' AND account_number = 1")).WillReturnError(nil).WillReturnRows(sqlmock.NewRows([]string{"transaction_id"}).AddRow("1").AddRow("2").AddRow("3"))
-				mock.ExpectQuery("SELECT transaction_id, account_number, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE user_id = '1234' AND account_number = 1 ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnRows(sqlmock.NewRows([]string{"transaction_id", "account_number", "amount", "transfer_to", "created_at", "updated_at", "status", "type", "comment"}).AddRow("0000-1111-2222-3333", 1, 1000, 1234567890, time.Now(), time.Now(), "approved", "debit", "no comments"))
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(`transaction_id`) FROM newTemp WHERE user_id = '1234' AND account_number = 1")).WillReturnError(nil).WillReturnRows(sqlmock.NewRows([]string{"count(transaction_id)"}).AddRow("1"))
+				mock.ExpectQuery("SELECT transaction_id, account_number, user_id, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE user_id = '1234' AND account_number = 1 ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnRows(sqlmock.NewRows([]string{"transaction_id", "account_number", "user_id", "amount", "transfer_to", "created_at", "updated_at", "status", "type", "comment"}).AddRow("0000-1111-2222-3333", 1, "4444-1111-2222-3333", 1000, 1234567890, time.Now(), time.Now(), "approved", "debit", "no comments"))
 				return dB
 			},
-			validator: func(rows []model.GetTransaction, count int, err error) {
-				temp := model.GetTransaction{
+			validator: func(rows []model.Transaction, count int, err error) {
+				temp := model.Transaction{
 					TransactionId: "0000-1111-2222-3333",
 					AccountNumber: 1,
+					UserId:        "4444-1111-2222-3333",
 					Amount:        1000,
 					TransferTo:    1234567890,
 					Status:        "approved",
@@ -103,7 +104,7 @@ func TestGet(t *testing.T) {
 					t.Errorf("Want: %v, Got: %v", nil, err)
 					return
 				}
-				if count != 3 {
+				if count != 1 {
 					t.Errorf("Want: %v, Got: %v", 3, count)
 				}
 				if !reflect.DeepEqual(rows[0].TransactionId, temp.TransactionId) {
@@ -112,6 +113,10 @@ func TestGet(t *testing.T) {
 				}
 				if !reflect.DeepEqual(rows[0].AccountNumber, temp.AccountNumber) {
 					t.Errorf("Want: %v, Got: %v", temp.AccountNumber, rows[0].AccountNumber)
+					return
+				}
+				if !reflect.DeepEqual(rows[0].UserId, temp.UserId) {
+					t.Errorf("Want: %v, Got: %v", temp.UserId, rows[0].UserId)
 					return
 				}
 				if !reflect.DeepEqual(rows[0].Amount, temp.Amount) {
@@ -151,11 +156,11 @@ func TestGet(t *testing.T) {
 					sqlSvc: db,
 					table:  "newTemp",
 				}
-				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(*) FROM newTemp WHERE user_id = '1234'")).WillReturnError(nil).WillReturnRows(sqlmock.NewRows([]string{"transaction_id"}).AddRow("1").AddRow("2").AddRow("3"))
-				mock.ExpectQuery("SELECT transaction_id, account_number, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE user_id = '1234' ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnRows(sqlmock.NewRows([]string{"transaction_id", "account_number", "amount", "transfer_to", "created_at", "updated_at", "status", "type", "comment"}).AddRow(true, 1, 1000, 1234567890, time.Now(), "abc", "approved", "debit", "no comments"))
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(`transaction_id`) FROM newTemp WHERE user_id = '1234'")).WillReturnError(nil).WillReturnRows(sqlmock.NewRows([]string{"transaction_id"}).AddRow("1").AddRow("2").AddRow("3"))
+				mock.ExpectQuery("SELECT transaction_id, account_number, user_id, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE user_id = '1234' ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnRows(sqlmock.NewRows([]string{"transaction_id", "account_number", "user_id", "amount", "transfer_to", "created_at", "updated_at", "status", "type", "comment"}).AddRow(true, 1, "123", 1000, 1234567890, time.Now(), "abc", "approved", "debit", "no comments"))
 				return dB
 			},
-			validator: func(rows []model.GetTransaction, count int, err error) {
+			validator: func(rows []model.Transaction, count int, err error) {
 				if !strings.Contains(err.Error(), "sql: Scan error on column") {
 					t.Errorf("Want: %v, Got: %v", "sql: Scan error on column", err.Error())
 				}
@@ -173,13 +178,57 @@ func TestGet(t *testing.T) {
 					sqlSvc: db,
 					table:  "newTemp",
 				}
-				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(*) FROM newTemp WHERE user_id = '1234'")).WillReturnError(nil).WillReturnRows(sqlmock.NewRows([]string{"transaction_id"}).AddRow("1").AddRow("2").AddRow("3"))
-				mock.ExpectQuery("SELECT transaction_id, account_number, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE userid = '1234' ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnError(errors.New("Unknown column"))
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(`transaction_id`) FROM newTemp WHERE userid = '1234'")).WillReturnError(nil).WillReturnRows(sqlmock.NewRows([]string{"transaction_id"}).AddRow("1").AddRow("2").AddRow("3"))
+				mock.ExpectQuery("SELECT transaction_id, account_number, user_id, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE userid = '1234' ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnError(errors.New("Unknown column"))
 				return dB
 			},
-			validator: func(rows []model.GetTransaction, count int, err error) {
+			validator: func(rows []model.Transaction, count int, err error) {
 				if !strings.Contains(err.Error(), "Unknown column") {
 					t.Errorf("Want: %v, Got: %v", "Unknown column", err)
+				}
+			},
+		},
+		{
+			name:   "FAILURE:: query error:: 2",
+			filter: map[string]interface{}{"userid": "1234"},
+			setupFunc: func() sqlDs {
+				db, mock, err := sqlmock.New()
+				if err != nil {
+					t.Fail()
+				}
+				dB := sqlDs{
+					sqlSvc: db,
+					table:  "newTemp",
+				}
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(`transaction_id`) FROM newTemp WHERE userid = '1234'")).WillReturnError(errors.New("query error")).WillReturnRows(sqlmock.NewRows([]string{"transaction_id"}).AddRow("1").AddRow("2").AddRow("3"))
+				mock.ExpectQuery("SELECT transaction_id, account_number, user_id, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE user_id = '1234' ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnError(errors.New("Unknown column"))
+				return dB
+			},
+			validator: func(rows []model.Transaction, count int, err error) {
+				if !strings.Contains(err.Error(), "query error") {
+					t.Errorf("Want: %v, Got: %v", "query error", err)
+				}
+			},
+		},
+		{
+			name:   "FAILURE:: scan error:: 2",
+			filter: map[string]interface{}{"userid": "1234"},
+			setupFunc: func() sqlDs {
+				db, mock, err := sqlmock.New()
+				if err != nil {
+					t.Fail()
+				}
+				dB := sqlDs{
+					sqlSvc: db,
+					table:  "newTemp",
+				}
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(`transaction_id`) FROM newTemp WHERE userid = '1234'")).WillReturnRows(sqlmock.NewRows([]string{"transaction_id"}).AddRow("1"))
+				mock.ExpectQuery("SELECT transaction_id, account_number, user_id, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE userid = '1234' ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnError(errors.New("query error"))
+				return dB
+			},
+			validator: func(rows []model.Transaction, count int, err error) {
+				if !strings.Contains(err.Error(), "query error") {
+					t.Errorf("Want: %v, Got: %v", "query error", err)
 				}
 			},
 		},
@@ -212,7 +261,7 @@ func TestInsert(t *testing.T) {
 	tests := []struct {
 		name        string
 		tableName   string
-		data        model.NewTransaction
+		data        model.Transaction
 		setupFunc   func() (sqlDs, sqlmock.Sqlmock)
 		cleanupFunc func()
 		filter      map[string]interface{}
@@ -220,7 +269,7 @@ func TestInsert(t *testing.T) {
 	}{
 		{
 			name: "SUCCESS:: Insert Article",
-			data: model.NewTransaction{
+			data: model.Transaction{
 				UserId:        "1",
 				AccountNumber: 1,
 				TransactionId: "1234",
@@ -239,7 +288,7 @@ func TestInsert(t *testing.T) {
 					sqlSvc: db,
 					table:  "newTemp",
 				}
-				m := mock.ExpectExec(regexp.QuoteMeta("INSERT INTO newTemp(user_id, transaction_id, account_number, amount, transfer_to, status, type, comment) VALUES(?,?,?,?,?,?,?,?)")).WithArgs("1", "1234", 1, 1000, 2, "approved", "debit", "abcd")
+				m := mock.ExpectExec(regexp.QuoteMeta("INSERT INTO newTemp(user_id, transaction_id, account_number, amount, transfer_to, status, type, comment) VALUES(?,?,?,?,?,?,?,?)")).WithArgs("1", "1234", 1, 1000.00, 2, "approved", "debit", "abcd")
 				m.WillReturnError(nil)
 				m.WillReturnResult(sqlmock.NewResult(1, 1))
 				return dB, mock
@@ -257,7 +306,7 @@ func TestInsert(t *testing.T) {
 		},
 		{
 			name: "FAILURE:: insert :: sql error",
-			data: model.NewTransaction{
+			data: model.Transaction{
 				UserId:        "1",
 				AccountNumber: 1,
 				TransactionId: "1234",

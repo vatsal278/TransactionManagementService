@@ -35,12 +35,13 @@ func (m *MockDataSourceI) EXPECT() *MockDataSourceIMockRecorder {
 }
 
 // Get mocks base method.
-func (m *MockDataSourceI) Get(arg0 map[string]interface{}, arg1, arg2 int) ([]model.GetTransaction, error) {
+func (m *MockDataSourceI) Get(arg0 map[string]interface{}, arg1, arg2 int) ([]model.GetTransaction, int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
 	ret0, _ := ret[0].([]model.GetTransaction)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // Get indicates an expected call of Get.

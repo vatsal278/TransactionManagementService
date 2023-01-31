@@ -6,7 +6,7 @@ import "github.com/vatsal278/TransactionManagementService/internal/model"
 
 type DataSourceI interface {
 	HealthCheck() bool
-	Get(map[string]interface{}, int, int) ([]model.GetTransaction, int, error)
-	Insert(user model.NewTransaction) error
+	Get(map[string]interface{}, int, int) ([]model.Transaction, int, error)
+	Insert(user model.Transaction) error
 	//Update(filterSet map[string]interface{}, filterWhere map[string]interface{}) error
 }

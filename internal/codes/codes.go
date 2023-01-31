@@ -52,6 +52,8 @@ const (
 	ErrUuid
 	ErrGetTransaction
 	ErrNoTransaction
+	ErrDefaultLimit
+	ErrDefaultPage
 )
 
 var errCodes = map[errCode]string{
@@ -100,6 +102,8 @@ var errCodes = map[errCode]string{
 	ErrUuid:                "error creating new uuid",
 	ErrGetTransaction:      "error fetching transactions",
 	ErrNoTransaction:       "no transactions were found",
+	ErrDefaultPage:         "changing page to default value=1 previously it was",
+	ErrDefaultLimit:        "changing limit to default value=5 previously it was",
 }
 
 func GetErr(code errCode) string {

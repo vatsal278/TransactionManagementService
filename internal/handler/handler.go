@@ -4,6 +4,7 @@ import (
 	"github.com/PereRohit/util/log"
 	"github.com/PereRohit/util/request"
 	"github.com/vatsal278/TransactionManagementService/internal/codes"
+	"github.com/vatsal278/TransactionManagementService/internal/config"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
 	"github.com/vatsal278/TransactionManagementService/pkg/session"
 	"net/http"
@@ -29,9 +30,9 @@ type transactionManagementService struct {
 	logic logic.TransactionManagementServiceLogicIer
 }
 
-func NewTransactionManagementService(ds datasource.DataSourceI) TransactionManagementServiceHandler {
+func NewTransactionManagementService(ds datasource.DataSourceI, as config.AccSvc) TransactionManagementServiceHandler {
 	svc := &transactionManagementService{
-		logic: logic.NewTransactionManagementServiceLogic(ds),
+		logic: logic.NewTransactionManagementServiceLogic(ds, as),
 	}
 	AddHealthChecker(svc)
 	return svc
@@ -60,20 +61,22 @@ func (svc transactionManagementService) GetTransactions(w http.ResponseWriter, r
 	}
 	queryParams := r.URL.Query()
 	limit, err := strconv.Atoi(queryParams.Get("limit"))
-	if err != nil {
+	if err != nil || limit == 0 {
+		log.Info(codes.GetErr(codes.ErrDefaultLimit), queryParams.Get("limit"))
 		limit = 5
-		//log.Error(err)
-		//response.ToJson(w, http.StatusBadRequest, err.Error(), nil)
-		//return
+		if err != nil {
+			log.Error(err)
+		}
 	}
-	offset, err := strconv.Atoi(queryParams.Get("offset"))
-	if err != nil {
-		offset = 0
-		//log.Error(err)
-		//response.ToJson(w, http.StatusBadRequest, err.Error(), nil)
-		//return
+	page, err := strconv.Atoi(queryParams.Get("page"))
+	if err != nil || page == 0 {
+		log.Info(codes.GetErr(codes.ErrDefaultPage), queryParams.Get("page"))
+		page = 1
+		if err != nil {
+			log.Error(err)
+		}
 	}
-	resp := svc.logic.GetTransactions(session.UserId, limit, offset)
+	resp := svc.logic.GetTransactions(session.UserId, limit, page)
 	response.ToJson(w, resp.Status, resp.Message, resp.Data)
 }
 
@@ -84,7 +87,7 @@ func (svc transactionManagementService) NewTransaction(w http.ResponseWriter, r 
 		response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrAssertUserid), nil)
 		return
 	}
-	var newTransaction model.NewTransaction
+	var newTransaction model.Transaction
 	status, err := request.FromJson(r, &newTransaction)
 	if err != nil {
 		log.Error(err)
