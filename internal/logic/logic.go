@@ -43,6 +43,8 @@ func (l transactionManagementServiceLogic) HealthCheck() bool {
 func (l transactionManagementServiceLogic) GetTransactions(id string, limit int, page int) *respModel.Response {
 	offset := (page - 1) * limit
 	transactions, count, err := l.DsSvc.Get(map[string]interface{}{"user_id": id}, limit, offset)
+	//var getTransaction model.GetTransaction
+	var getTransactions []model.GetTransaction
 	if err != nil {
 		log.Error(err)
 		return &respModel.Response{
@@ -51,12 +53,26 @@ func (l transactionManagementServiceLogic) GetTransactions(id string, limit int,
 			Data:    nil,
 		}
 	}
+	for _, s := range transactions {
+		getTransaction := model.GetTransaction{
+			AccountNumber: s.AccountNumber,
+			TransactionId: s.TransactionId,
+			Amount:        s.Amount,
+			TransferTo:    s.TransferTo,
+			CreatedAt:     s.CreatedAt,
+			UpdatedAt:     s.UpdatedAt,
+			Status:        s.Status,
+			Type:          s.Type,
+			Comment:       s.Comment,
+		}
+		getTransactions = append(getTransactions, getTransaction)
+	}
 	totalPages := int(math.Ceil(float64(count) / float64(limit)))
 	nextPage := -1
 	if count-offset > limit {
 		nextPage = page + 1
 	}
-	resp := model.PaginatedResponse{Response: transactions, Pagination: model.Paginate{CurrentPage: page, NextPage: nextPage, TotalPage: totalPages}}
+	resp := model.PaginatedResponse{Response: getTransactions, Pagination: model.Paginate{CurrentPage: page, NextPage: nextPage, TotalPage: totalPages}}
 	return &respModel.Response{
 		Status:  http.StatusOK,
 		Message: "SUCCESS",
