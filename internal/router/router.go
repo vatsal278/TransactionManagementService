@@ -39,10 +39,11 @@ func Register(svcCfg *config.SvcConfig) *mux.Router {
 func attachTransactionManagementServiceRoutes(m *mux.Router, svcCfg *config.SvcConfig) *mux.Router {
 	dataSource := datasource.NewSql(svcCfg.DbSvc, svcCfg.Cfg.DataBase.TableName)
 	middleware := middleware2.NewTransactionMgmtMiddleware(svcCfg)
-	svc := handler.NewTransactionManagementService(dataSource, svcCfg.Cfg.AccSvcUrl)
+	svc := handler.NewTransactionManagementService(dataSource, svcCfg.UtilService)
 
 	router := m.PathPrefix("").Subrouter()
 	router.HandleFunc("", svc.NewTransaction).Methods(http.MethodPost)
+	router.HandleFunc("/download/transaction_id", svc.NewTransaction).Methods(http.MethodGet)
 	router.Use(middleware.ExtractUser)
 
 	router2 := m.PathPrefix("").Subrouter()

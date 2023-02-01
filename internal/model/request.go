@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type UpdateTransaction struct {
 	AccountNumber   int     `json:"account_number" validate:"required"`
 	Amount          float64 `json:"amount" validate:"required"`
@@ -8,4 +10,10 @@ type UpdateTransaction struct {
 type SessionStruct struct {
 	UserId string
 	Cookie string
+}
+type UserDetails struct {
+	Name      string
+	Email     string
+	Company   string
+	LastLogin time.Time
 }

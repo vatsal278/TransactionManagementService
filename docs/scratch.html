@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<style type="text/css">
+    .tg  {border-collapse:collapse;border-spacing:0;}
+    .tg td{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
+        overflow:hidden;padding:10px 5px;word-break:normal;}
+    .tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
+        font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
+    .tg .tg-fymr{border-color:inherit;font-weight:bold;text-align:left;vertical-align:top}
+    .tg .tg-0pky{border-color:inherit;text-align:left;vertical-align:top}
+</style>
+<table class="tg">
+    <tbody>
+    <tr>
+        <td class="tg-fymr">TransferFrom</td>
+        <td class="tg-fymr">TransferTo</td>
+    </tr>
+    <tr>
+        <td class="tg-0pky">{{.Name}}<br>{{.TransferFromAccountNumber}}</td>
+        <td class="tg-0pky">{{.TransferToAccountNumber}}</td>
+    </tr>
+    <tr>
+        <td class="tg-fymr">Amount</td>
+        <td class="tg-fymr">Type</td>
+    </tr>
+    <tr>
+        <td class="tg-0pky">{{.Amount}}</td>
+        <td class="tg-0pky">{{.Type}}</td>
+    </tr>
+    <tr>
+        <td class="tg-fymr">TransactionId</td>
+        <td class="tg-fymr">Status</td>
+    </tr>
+    <tr>
+        <td class="tg-0pky">{{.TransactionId}}</td>
+        <td class="tg-0pky">{{.Status}}</td>
+    </tr>
+    <tr>
+        <td class="tg-fymr">Date</td>
+        <td class="tg-fymr">Comment</td>
+    </tr>
+    <tr>
+        <td class="tg-0pky">{{.Date}}</td>
+        <td class="tg-0pky">{{.Comment}}</td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

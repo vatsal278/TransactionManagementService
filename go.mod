@@ -11,6 +11,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/vatsal278/go-redis-cache v1.1.0
+	github.com/vatsal278/html-pdf-service v0.0.0-20221130095009-d122cd80444d
 	golang.org/x/net v0.0.0-20220607020251-c690dde0001d
 )
 
@@ -23,7 +24,6 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
-	github.com/vatsal278/AccountManagmentSvc v0.0.0-20230123114637-ff3a96ecb0f2 // indirect
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/text v0.3.7 // indirect

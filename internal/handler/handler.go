@@ -3,7 +3,9 @@ package handler
 import (
 	"github.com/PereRohit/util/log"
 	"github.com/PereRohit/util/request"
+	"github.com/gorilla/mux"
 	"github.com/vatsal278/TransactionManagementService/internal/codes"
+	"github.com/vatsal278/TransactionManagementService/internal/config"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
 	"github.com/vatsal278/TransactionManagementService/pkg/session"
 	"net/http"
@@ -29,9 +31,9 @@ type transactionManagementService struct {
 	logic logic.TransactionManagementServiceLogicIer
 }
 
-func NewTransactionManagementService(ds datasource.DataSourceI, as string) TransactionManagementServiceHandler {
+func NewTransactionManagementService(ds datasource.DataSourceI, ut config.UtilSvc) TransactionManagementServiceHandler {
 	svc := &transactionManagementService{
-		logic: logic.NewTransactionManagementServiceLogic(ds, as),
+		logic: logic.NewTransactionManagementServiceLogic(ds, ut),
 	}
 	AddHealthChecker(svc)
 	return svc
@@ -96,5 +98,17 @@ func (svc transactionManagementService) NewTransaction(w http.ResponseWriter, r 
 	}
 	newTransaction.UserId = session.UserId
 	resp := svc.logic.NewTransaction(newTransaction)
+	response.ToJson(w, resp.Status, resp.Message, resp.Data)
+}
+
+func (svc transactionManagementService) DownloadTransaction(w http.ResponseWriter, r *http.Request) {
+	sessionStruct := session.GetSession(r.Context())
+	session, ok := sessionStruct.(model.SessionStruct)
+	if !ok {
+		response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrAssertUserid), nil)
+		return
+	}
+	vars := mux.Vars(r)
+	resp := svc.logic.DownloadTransaction(vars["transaction_id"], session.Cookie)
 	response.ToJson(w, resp.Status, resp.Message, resp.Data)
 }
