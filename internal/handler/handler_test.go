@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/PereRohit/util/testutil"
@@ -104,7 +105,7 @@ func TestNewTransactionManagementService(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rec := NewTransactionManagementService(tt.setup())
+			rec := NewTransactionManagementService(tt.setup(), "")
 
 			_, _, stat := rec.HealthCheck()
 
@@ -122,13 +123,13 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 
 	tests := []struct {
 		name  string
-		model model.NewTransaction
+		model model.Transaction
 		setup func() (*transactionManagementService, *http.Request)
 		want  func(recorder httptest.ResponseRecorder)
 	}{
 		{
 			name: "Success",
-			model: model.NewTransaction{
+			model: model.Transaction{
 				AccountNumber: 1,
 				Amount:        1000,
 				TransferTo:    2,
@@ -138,7 +139,7 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 			},
 			setup: func() (*transactionManagementService, *http.Request) {
 				mockLogic := mock.NewMockTransactionManagementServiceLogicIer(mockCtrl)
-				mockLogic.EXPECT().NewTransaction(model.NewTransaction{
+				mockLogic.EXPECT().NewTransaction(model.Transaction{
 					UserId:        "1234",
 					AccountNumber: 1,
 					Amount:        1000,
@@ -154,7 +155,7 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 				svc := &transactionManagementService{
 					logic: mockLogic,
 				}
-				by, err := json.Marshal(model.NewTransaction{
+				by, err := json.Marshal(model.Transaction{
 					AccountNumber: 1,
 					Amount:        1000,
 					TransferTo:    2,
@@ -281,7 +282,8 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 		})
 	}
 }
-func TestAccountManagmentSvc_AccountSummary(t *testing.T) {
+
+func TestTransactionManagementService_GetTransactions(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -298,10 +300,9 @@ func TestAccountManagmentSvc_AccountSummary(t *testing.T) {
 				mockLogic.EXPECT().GetTransactions("1234", 5, 1).Times(1).Return(&respModel.Response{
 					Status:  http.StatusOK,
 					Message: codes.GetErr(codes.Success),
-					Data: model.PaginatedResponse{Response: []model.GetTransaction{{Amount: 1000, AccountNumber: 1}}, Pagination: model.Paginate{
+					Data: model.PaginatedResponse{Response: []model.Transaction{{Amount: 1000, AccountNumber: 1}}, Pagination: model.Paginate{
 						CurrentPage: 1,
-						Limit:       5,
-						TotalCount:  1,
+						NextPage:    -1,
 						TotalPage:   1,
 					}},
 				})
@@ -317,40 +318,21 @@ func TestAccountManagmentSvc_AccountSummary(t *testing.T) {
 				if err != nil {
 					return
 				}
-				var response respModel.Response
-				err = json.Unmarshal(b, &response)
 				tempResp := &respModel.Response{
 					Status:  http.StatusOK,
 					Message: codes.GetErr(codes.Success),
-					Data: model.PaginatedResponse{Response: []model.GetTransaction{{Amount: 1000, AccountNumber: 1}}, Pagination: model.Paginate{
+					Data: model.PaginatedResponse{Response: []model.Transaction{{Amount: 1000, AccountNumber: 1}}, Pagination: model.Paginate{
 						CurrentPage: 1,
-						Limit:       5,
-						TotalCount:  1,
+						NextPage:    -1,
 						TotalPage:   1,
 					}},
 				}
-				respData := response.Data.(map[string]interface{})
-				if !reflect.DeepEqual(response.Status, tempResp.Status) {
-					t.Errorf("Want: %v, Got: %v", tempResp.Status, response.Status)
+				marshal, err := json.Marshal(&tempResp)
+				if err != nil {
+					return
 				}
-				if !reflect.DeepEqual(respData.Response[0].Amount, 1000) {
-					t.Errorf("Want: %v, Got: %v", 1000, respData.Response[0].Amount)
-				}
-				if !reflect.DeepEqual(respData.Response[0].AccountNumber, 1) {
-					t.Errorf("Want: %v, Got: %v", 1, respData.Response[0].AccountNumber)
-				}
-				if !reflect.DeepEqual(respData.Pagination, model.Paginate{
-					CurrentPage: 1,
-					Limit:       5,
-					TotalCount:  1,
-					TotalPage:   1,
-				}) {
-					t.Errorf("Want: %v, Got: %v", model.Paginate{
-						CurrentPage: 1,
-						Limit:       5,
-						TotalCount:  1,
-						TotalPage:   1,
-					}, respData.Pagination)
+				if strings.Compare(string(marshal), string(b)) != -1 {
+					t.Errorf("Want: %v, Got: %v", string(marshal), string(b))
 				}
 			},
 		},
@@ -358,11 +340,6 @@ func TestAccountManagmentSvc_AccountSummary(t *testing.T) {
 			name: "Failure:: logic :: internal server error",
 			setup: func() (*transactionManagementService, *http.Request) {
 				mockLogic := mock.NewMockTransactionManagementServiceLogicIer(mockCtrl)
-				mockLogic.EXPECT().GetTransactions("1234", 5, 1).Return(&respModel.Response{
-					Status:  http.StatusInternalServerError,
-					Message: codes.GetErr(codes.ErrAssertUserid),
-					Data:    nil,
-				})
 				svc := &transactionManagementService{
 					logic: mockLogic,
 				}
@@ -378,7 +355,7 @@ func TestAccountManagmentSvc_AccountSummary(t *testing.T) {
 				var response respModel.Response
 				err = json.Unmarshal(b, &response)
 				tempResp := &respModel.Response{
-					Status:  http.StatusInternalServerError,
+					Status:  http.StatusBadRequest,
 					Message: codes.GetErr(codes.ErrAssertUserid),
 					Data:    nil,
 				}

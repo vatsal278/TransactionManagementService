@@ -4,7 +4,6 @@ import (
 	"github.com/PereRohit/util/log"
 	"github.com/PereRohit/util/request"
 	"github.com/vatsal278/TransactionManagementService/internal/codes"
-	"github.com/vatsal278/TransactionManagementService/internal/config"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
 	"github.com/vatsal278/TransactionManagementService/pkg/session"
 	"net/http"
@@ -30,7 +29,7 @@ type transactionManagementService struct {
 	logic logic.TransactionManagementServiceLogicIer
 }
 
-func NewTransactionManagementService(ds datasource.DataSourceI, as config.AccSvc) TransactionManagementServiceHandler {
+func NewTransactionManagementService(ds datasource.DataSourceI, as string) TransactionManagementServiceHandler {
 	svc := &transactionManagementService{
 		logic: logic.NewTransactionManagementServiceLogic(ds, as),
 	}
@@ -62,6 +61,7 @@ func (svc transactionManagementService) GetTransactions(w http.ResponseWriter, r
 	queryParams := r.URL.Query()
 	limit, err := strconv.Atoi(queryParams.Get("limit"))
 	if err != nil || limit == 0 {
+
 		log.Info(codes.GetErr(codes.ErrDefaultLimit), queryParams.Get("limit"))
 		limit = 5
 		if err != nil {

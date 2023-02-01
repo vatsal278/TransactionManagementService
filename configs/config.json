@@ -20,11 +20,7 @@
   "cache": {
     "port": "6379",
     "host": "localhost",
-    "duration":"15s"
+    "duration":"1m"
   },
-  "acc_svc": {
-    "host": "http://localhost",
-    "port": "9080",
-    "route": "/update/transaction"
-  }
+  "acc_svc_url": "http://localhost:9080"
 }

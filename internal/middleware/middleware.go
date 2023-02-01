@@ -117,9 +117,9 @@ func (t TransactionMgmtMiddleware) Cacher(requireAuth bool) func(http.Handler) h
 					log.Error(err)
 					return
 				}
+				w.Header().Set("Content-Type", cacheResponse.ContentType)
 				w.Write([]byte(cacheResponse.Response))
 				w.WriteHeader(cacheResponse.Status)
-				w.Header().Set("Content-Type", cacheResponse.ContentType)
 				return
 			}
 			hijackedWriter := &respWriterWithStatus{-1, "", w}
@@ -133,7 +133,12 @@ func (t TransactionMgmtMiddleware) Cacher(requireAuth bool) func(http.Handler) h
 				Response:    hijackedWriter.response,
 				ContentType: w.Header().Get("Content-Type"),
 			}
-			err = Cacher.Set(key, cacheResponse, t.cfg.Cache.Time)
+			byt, err := json.Marshal(cacheResponse)
+			if err != nil {
+				log.Error(err)
+				return
+			}
+			err = Cacher.Set(key, byt, t.cfg.Cache.Time)
 			if err != nil {
 				log.Error(err)
 				return

@@ -7,7 +7,6 @@ import (
 	respModel "github.com/PereRohit/util/model"
 	"github.com/google/uuid"
 	"github.com/vatsal278/TransactionManagementService/internal/codes"
-	"github.com/vatsal278/TransactionManagementService/internal/config"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
 	"github.com/vatsal278/TransactionManagementService/internal/repo/datasource"
 	"math"
@@ -25,10 +24,10 @@ type TransactionManagementServiceLogicIer interface {
 
 type transactionManagementServiceLogic struct {
 	DsSvc  datasource.DataSourceI
-	AccSvc config.AccSvc
+	AccSvc string
 }
 
-func NewTransactionManagementServiceLogic(ds datasource.DataSourceI, as config.AccSvc) TransactionManagementServiceLogicIer {
+func NewTransactionManagementServiceLogic(ds datasource.DataSourceI, as string) TransactionManagementServiceLogicIer {
 	return &transactionManagementServiceLogic{
 		DsSvc:  ds,
 		AccSvc: as,
@@ -43,8 +42,6 @@ func (l transactionManagementServiceLogic) HealthCheck() bool {
 func (l transactionManagementServiceLogic) GetTransactions(id string, limit int, page int) *respModel.Response {
 	offset := (page - 1) * limit
 	transactions, count, err := l.DsSvc.Get(map[string]interface{}{"user_id": id}, limit, offset)
-	//var getTransaction model.GetTransaction
-	var getTransactions []model.GetTransaction
 	if err != nil {
 		log.Error(err)
 		return &respModel.Response{
@@ -53,26 +50,12 @@ func (l transactionManagementServiceLogic) GetTransactions(id string, limit int,
 			Data:    nil,
 		}
 	}
-	for _, s := range transactions {
-		getTransaction := model.GetTransaction{
-			AccountNumber: s.AccountNumber,
-			TransactionId: s.TransactionId,
-			Amount:        s.Amount,
-			TransferTo:    s.TransferTo,
-			CreatedAt:     s.CreatedAt,
-			UpdatedAt:     s.UpdatedAt,
-			Status:        s.Status,
-			Type:          s.Type,
-			Comment:       s.Comment,
-		}
-		getTransactions = append(getTransactions, getTransaction)
-	}
 	totalPages := int(math.Ceil(float64(count) / float64(limit)))
 	nextPage := -1
 	if count-offset > limit {
 		nextPage = page + 1
 	}
-	resp := model.PaginatedResponse{Response: getTransactions, Pagination: model.Paginate{CurrentPage: page, NextPage: nextPage, TotalPage: totalPages}}
+	resp := model.PaginatedResponse{Response: transactions, Pagination: model.Paginate{CurrentPage: page, NextPage: nextPage, TotalPage: totalPages}}
 	return &respModel.Response{
 		Status:  http.StatusOK,
 		Message: "SUCCESS",
@@ -91,6 +74,14 @@ func (l transactionManagementServiceLogic) NewTransaction(transaction model.Tran
 			Data:    nil,
 		}
 	}
+	if transaction.Status != "approved" {
+		return &respModel.Response{
+			Status:  http.StatusCreated,
+			Message: "SUCCESS",
+			Data:    nil,
+		}
+	}
+	log.Info(l.AccSvc)
 	upTransaction := model.UpdateTransaction{AccountNumber: transaction.AccountNumber, Amount: transaction.Amount, TransactionType: transaction.Type}
 	by, err := json.Marshal(upTransaction)
 	if err != nil {
@@ -102,7 +93,7 @@ func (l transactionManagementServiceLogic) NewTransaction(transaction model.Tran
 		}
 	}
 	go func(reqBody []byte) {
-		req, err := http.NewRequest("PUT", l.AccSvc.Host+":"+l.AccSvc.Port+"/microbank/v1/account"+l.AccSvc.Route, bytes.NewReader(reqBody))
+		req, err := http.NewRequest("PUT", l.AccSvc+"/microbank/v1/account/update/transaction", bytes.NewReader(reqBody))
 		if err != nil {
 			log.Error(err)
 			return

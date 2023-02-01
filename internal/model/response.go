@@ -7,10 +7,7 @@ type CacheResponse struct {
 	Response    string
 	ContentType string
 }
-type PaginatedResponse struct {
-	Response   []GetTransaction
-	Pagination Paginate
-}
+
 type GetTransaction struct {
 	AccountNumber int       `json:"account_number"`
 	TransactionId string    `json:"transaction_id"`
@@ -22,8 +19,12 @@ type GetTransaction struct {
 	Type          string    `json:"type"`
 	Comment       string    `json:"comment"`
 }
+type PaginatedResponse struct {
+	Response   []Transaction `json:"response"`
+	Pagination Paginate      `json:"pagination"`
+}
 type Paginate struct {
-	CurrentPage int
-	NextPage    int
-	TotalPage   int
+	CurrentPage int `json:"current_page"`
+	NextPage    int `json:"next_page"`
+	TotalPage   int `json:"total_page"`
 }

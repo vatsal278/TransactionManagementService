@@ -2,20 +2,12 @@ package model
 
 import "time"
 
-type DsResponse struct {
-	Data string
-}
-
-type PingDs struct {
-	Data string
-}
-
 type ColumnUpdate struct {
 	UpdateSet string
 }
 
 type Transaction struct {
-	UserId        string    `json:"user_id"`
+	UserId        string    `json:"-"`
 	AccountNumber int       `json:"account_number"`
 	TransactionId string    `json:"transaction_id"`
 	Amount        float64   `json:"amount"`
@@ -25,16 +17,6 @@ type Transaction struct {
 	Status        string    `json:"status"`
 	Type          string    `json:"type"`
 	Comment       string    `json:"comment"`
-}
-type NewTransaction struct {
-	UserId        string  `json:"user_id"`
-	AccountNumber int     `json:"account_number"`
-	TransactionId string  `json:"transaction_id"`
-	Amount        float64 `json:"amount"`
-	TransferTo    int     `json:"transfer_to"`
-	Status        string  `json:"status"`
-	Type          string  `json:"type"`
-	Comment       string  `json:"comment"`
 }
 
 const Schema = `

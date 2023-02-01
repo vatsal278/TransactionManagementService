@@ -19,7 +19,7 @@ type Config struct {
 	SecretKey string       `json:"secret_key"`
 	Cookie    CookieStruct `json:"cookie"`
 	Cache     CacheCfg     `json:"cache"`
-	AccSvc    AccSvc       `json:"acc_svc"`
+	AccSvcUrl string       `json:"acc_svc_url"`
 }
 
 type SvcConfig struct {
@@ -61,12 +61,6 @@ type CacheCfg struct {
 }
 type CacherSvc struct {
 	Cacher redis.Cacher
-}
-
-type AccSvc struct {
-	Host  string
-	Port  string
-	Route string
 }
 
 func Connect(cfg DbCfg, tableName string) *sql.DB {

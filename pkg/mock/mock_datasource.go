@@ -35,10 +35,10 @@ func (m *MockDataSourceI) EXPECT() *MockDataSourceIMockRecorder {
 }
 
 // Get mocks base method.
-func (m *MockDataSourceI) Get(arg0 map[string]interface{}, arg1, arg2 int) ([]model.GetTransaction, int, error) {
+func (m *MockDataSourceI) Get(arg0 map[string]interface{}, arg1, arg2 int) ([]model.Transaction, int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]model.GetTransaction)
+	ret0, _ := ret[0].([]model.Transaction)
 	ret1, _ := ret[1].(int)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
@@ -65,7 +65,7 @@ func (mr *MockDataSourceIMockRecorder) HealthCheck() *gomock.Call {
 }
 
 // Insert mocks base method.
-func (m *MockDataSourceI) Insert(arg0 model.NewTransaction) error {
+func (m *MockDataSourceI) Insert(arg0 model.Transaction) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Insert", arg0)
 	ret0, _ := ret[0].(error)
