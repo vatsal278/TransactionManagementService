@@ -63,14 +63,14 @@ func TestTransactionManagementServiceLogic_GetTransactions(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	tests := []struct {
-		name        string
-		credentials string
-		setup       func() (datasource.DataSourceI, string)
-		want        func(*respModel.Response)
+		name   string
+		userId string
+		setup  func() (datasource.DataSourceI, string)
+		want   func(*respModel.Response)
 	}{
 		{
-			name:        "Success :: AccDetails",
-			credentials: "123",
+			name:   "Success :: Get Transaction",
+			userId: "123",
 			setup: func() (datasource.DataSourceI, string) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
@@ -113,8 +113,8 @@ func TestTransactionManagementServiceLogic_GetTransactions(t *testing.T) {
 			},
 		},
 		{
-			name:        "Success :: AccDetails:: count_offset>limit",
-			credentials: "123",
+			name:   "Success :: Get Transaction:: count_offset>limit",
+			userId: "123",
 			setup: func() (datasource.DataSourceI, string) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
@@ -157,8 +157,8 @@ func TestTransactionManagementServiceLogic_GetTransactions(t *testing.T) {
 			},
 		},
 		{
-			name:        "Failure :: AccDetails :: db err",
-			credentials: "123",
+			name:   "Failure :: Get Transaction :: db err",
+			userId: "123",
 			setup: func() (datasource.DataSourceI, string) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				mockDs.EXPECT().Get(map[string]interface{}{"user_id": "123"}, 5, 0).Times(1).Return(nil, 0, errors.New("error"))
@@ -180,7 +180,7 @@ func TestTransactionManagementServiceLogic_GetTransactions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := NewTransactionManagementServiceLogic(tt.setup())
 
-			got := rec.GetTransactions(tt.credentials, 5, 1)
+			got := rec.GetTransactions(tt.userId, 5, 1)
 
 			tt.want(got)
 		})
@@ -193,13 +193,13 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		credentials model.Transaction
+		credentials model.NewTransaction
 		setup       func() (datasource.DataSourceI, string)
 		want        func(*respModel.Response)
 	}{
 		{
 			name: "Success::transaction status != approved",
-			credentials: model.Transaction{
+			credentials: model.NewTransaction{
 				UserId: "123",
 			},
 			setup: func() (datasource.DataSourceI, string) {
@@ -220,7 +220,7 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 		},
 		{
 			name: "Success::transaction status = approved",
-			credentials: model.Transaction{
+			credentials: model.NewTransaction{
 				UserId: "123",
 				Status: "approved",
 			},
@@ -242,7 +242,7 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 		},
 		{
 			name: "Failure::Get from db err",
-			credentials: model.Transaction{
+			credentials: model.NewTransaction{
 				UserId: "123",
 			},
 			setup: func() (datasource.DataSourceI, string) {

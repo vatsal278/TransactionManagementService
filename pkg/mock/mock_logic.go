@@ -64,7 +64,7 @@ func (mr *MockTransactionManagementServiceLogicIerMockRecorder) HealthCheck() *g
 }
 
 // NewTransaction mocks base method.
-func (m *MockTransactionManagementServiceLogicIer) NewTransaction(arg0 model0.Transaction) *model.Response {
+func (m *MockTransactionManagementServiceLogicIer) NewTransaction(arg0 model0.NewTransaction) *model.Response {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewTransaction", arg0)
 	ret0, _ := ret[0].(*model.Response)

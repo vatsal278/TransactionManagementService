@@ -14,8 +14,8 @@ type Transaction struct {
 	TransferTo    int       `json:"transfer_to"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
-	Status        string    `json:"status"`
-	Type          string    `json:"type"`
+	Status        string    `json:"status" validate:"required,oneof=approved rejected"`
+	Type          string    `json:"type" validate:"required,oneof=credit debit"`
 	Comment       string    `json:"comment"`
 }
 

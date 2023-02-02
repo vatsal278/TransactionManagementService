@@ -9,3 +9,12 @@ type SessionStruct struct {
 	UserId string
 	Cookie string
 }
+type NewTransaction struct {
+	UserId        string  `json:"-"`
+	AccountNumber int     `json:"account_number"`
+	Amount        float64 `json:"amount"`
+	TransferTo    int     `json:"transfer_to"`
+	Status        string  `json:"status" validate:"required,oneof=approved rejected"`
+	Type          string  `json:"type" validate:"required,oneof=credit debit"`
+	Comment       string  `json:"comment"`
+}

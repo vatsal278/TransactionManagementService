@@ -124,7 +124,6 @@ func (t TransactionMgmtMiddleware) Cacher(requireAuth bool) func(http.Handler) h
 			}
 			hijackedWriter := &respWriterWithStatus{-1, "", w}
 			next.ServeHTTP(hijackedWriter, r)
-			log.Error(hijackedWriter.status)
 			if hijackedWriter.status < 200 || hijackedWriter.status >= 300 {
 				return
 			}
@@ -138,6 +137,7 @@ func (t TransactionMgmtMiddleware) Cacher(requireAuth bool) func(http.Handler) h
 				log.Error(err)
 				return
 			}
+			log.Info(string(byt))
 			err = Cacher.Set(key, byt, t.cfg.Cache.Time)
 			if err != nil {
 				log.Error(err)
