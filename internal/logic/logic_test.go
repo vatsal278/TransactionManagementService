@@ -3,14 +3,16 @@ package logic
 import (
 	"errors"
 	respModel "github.com/PereRohit/util/model"
+	"github.com/PereRohit/util/response"
+	"github.com/PereRohit/util/testutil"
+	"github.com/golang/mock/gomock"
+	"github.com/gorilla/mux"
 	"github.com/vatsal278/TransactionManagementService/internal/codes"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
 	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
-
-	"github.com/PereRohit/util/testutil"
-	"github.com/golang/mock/gomock"
 
 	"github.com/vatsal278/TransactionManagementService/internal/repo/datasource"
 	"github.com/vatsal278/TransactionManagementService/pkg/mock"
@@ -225,9 +227,26 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 				Status: "approved",
 			},
 			setup: func() (datasource.DataSourceI, string) {
+				router := mux.NewRouter()
+				router.HandleFunc("/microbank/v1/account/update/transaction", func(w http.ResponseWriter, r *http.Request) {
+					t.Log("123")
+					response.ToJson(w, http.StatusBadRequest, "Success", map[string]interface{}{"id": "123"})
+				})
+				srv := httptest.NewServer(router)
+				//req, err := http.NewRequest("PUT", srv.URL+"/microbank/v1/account/update/transaction", nil)
+				//if err != nil {
+				//	t.Log(err)
+				//	t.Fail()
+				//}
+				//client := http.Client{Timeout: 3 * time.Second}
+				//_, err = client.Do(req)
+				//if err != nil {
+				//	t.Log(err)
+				//
+				//}
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				mockDs.EXPECT().Insert(gomock.Any()).Times(1).Return(nil)
-				return mockDs, ""
+				return mockDs, srv.URL
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{

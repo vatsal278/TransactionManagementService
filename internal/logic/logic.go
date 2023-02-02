@@ -101,8 +101,9 @@ func (l transactionManagementServiceLogic) NewTransaction(newTransaction model.N
 			Data:    nil,
 		}
 	}
+	log.Info(l.AccSvc)
 	go func(reqBody []byte) {
-		req, err := http.NewRequest("PUT", l.AccSvc+"/microbank/v1/account/update/newTransaction", bytes.NewReader(reqBody))
+		req, err := http.NewRequest("PUT", l.AccSvc+"/microbank/v1/account/update/transaction", bytes.NewReader(reqBody))
 		if err != nil {
 			log.Error(err)
 			return
