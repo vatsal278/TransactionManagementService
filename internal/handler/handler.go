@@ -25,6 +25,7 @@ type TransactionManagementServiceHandler interface {
 	HealthChecker
 	GetTransactions(w http.ResponseWriter, r *http.Request)
 	NewTransaction(w http.ResponseWriter, r *http.Request)
+	DownloadTransaction(w http.ResponseWriter, r *http.Request)
 }
 
 type transactionManagementService struct {

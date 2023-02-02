@@ -23,7 +23,7 @@
     "duration":"1m"
   },
   "acc_svc_url": "http://localhost:9080",
-  "pdf_svc_url": "http://localhost:9090/v1",
-  "user_svc_url": "http://localhost:9080",
+  "pdf_svc_url": "http://localhost:9060",
+  "user_svc_url": "http://localhost:80",
   "html_template_file_path":"./docs/scratch.html"
 }

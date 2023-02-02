@@ -112,11 +112,20 @@ func (l transactionManagementServiceLogic) NewTransaction(transaction model.Tran
 }
 
 func (l transactionManagementServiceLogic) DownloadTransaction(id string, cookie string) *respModel.Response {
-	transactions, _, err := l.DsSvc.Get(map[string]interface{}{"transaction_id": id}, 1, 1)
+	log.Info(id)
+	transactions, _, err := l.DsSvc.Get(map[string]interface{}{"transaction_id": id}, 1, 0)
 	if err != nil {
 		log.Error(err)
 		return &respModel.Response{
 			Status:  http.StatusInternalServerError,
+			Message: codes.GetErr(codes.ErrGetTransaction),
+			Data:    nil,
+		}
+	}
+	if len(transactions) == 0 {
+		log.Error("no transaction with specified transaction_id found")
+		return &respModel.Response{
+			Status:  http.StatusBadRequest,
 			Message: codes.GetErr(codes.ErrGetTransaction),
 			Data:    nil,
 		}
@@ -134,13 +143,15 @@ func (l transactionManagementServiceLogic) DownloadTransaction(id string, cookie
 	client := http.Client{Timeout: 2 * time.Second}
 	response, err := client.Do(req)
 	if err != nil {
+		log.Error(err)
 		return &respModel.Response{
 			Status:  http.StatusInternalServerError,
 			Message: codes.GetErr(codes.ErrFetchinDataUserSvc),
 			Data:    nil,
 		}
 	}
-	if response.Status != "200 OK" {
+	if response.StatusCode != http.StatusOK {
+		log.Info("Status Not OK,%s", response.StatusCode)
 		return &respModel.Response{
 			Status:  http.StatusInternalServerError,
 			Message: codes.GetErr(codes.ErrFetchinDataUserSvc),

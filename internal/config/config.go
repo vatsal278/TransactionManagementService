@@ -9,6 +9,7 @@ import (
 	"github.com/vatsal278/TransactionManagementService/internal/repo/authentication"
 	"github.com/vatsal278/go-redis-cache"
 	"github.com/vatsal278/html-pdf-service/pkg/sdk"
+	"log"
 	"os"
 	"time"
 )
@@ -22,7 +23,7 @@ type Config struct {
 	Cookie           CookieStruct `json:"cookie"`
 	Cache            CacheCfg     `json:"cache"`
 	AccSvcUrl        string       `json:"acc_svc_url"`
-	PdfServiceUrl    string       `json:"pdf_service_url"`
+	PdfServiceUrl    string       `json:"pdf_svc_url"`
 	UserSvcUrl       string       `json:"user_svc_url"`
 	HtmlTemplateFile string       `json:"html_template_file_path"`
 }
@@ -119,6 +120,7 @@ func InitSvcConfig(cfg Config) *SvcConfig {
 	}
 	cfg.Cache.Time = duration
 	pdfSvcI := sdk.NewHtmlToPdfSvc(cfg.PdfServiceUrl)
+	log.Print(cfg.PdfServiceUrl)
 	file, err := os.ReadFile(cfg.HtmlTemplateFile)
 	if err != nil {
 		panic(err.Error())
