@@ -111,5 +111,20 @@ func (svc transactionManagementService) DownloadTransaction(w http.ResponseWrite
 	}
 	vars := mux.Vars(r)
 	resp := svc.logic.DownloadTransaction(vars["transaction_id"], session.Cookie)
-	response.ToJson(w, resp.Status, resp.Message, resp.Data)
+	if resp.Status != http.StatusOK {
+		response.ToJson(w, resp.Status, resp.Message, resp.Data)
+		return
+	}
+	pdf, ok := resp.Data.([]byte)
+	if !ok {
+		response.ToJson(w, http.StatusBadRequest, "error assert pdf []byte", nil)
+		return
+	}
+	_, err := w.Write(pdf)
+	if err != nil {
+		response.ToJson(w, http.StatusInternalServerError, "error writing pdf", nil)
+		return
+	}
+	w.Header().Set("Content-Disposition", "attachment; filename="+vars["transaction_id"]+".pdf")
+	w.Header().Set("Content-Type", "application/pdf")
 }

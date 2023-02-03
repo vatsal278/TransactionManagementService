@@ -34,6 +34,18 @@ func (m *MockTransactionManagementServiceHandler) EXPECT() *MockTransactionManag
 	return m.recorder
 }
 
+// DownloadTransaction mocks base method.
+func (m *MockTransactionManagementServiceHandler) DownloadTransaction(arg0 http.ResponseWriter, arg1 *http.Request) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "DownloadTransaction", arg0, arg1)
+}
+
+// DownloadTransaction indicates an expected call of DownloadTransaction.
+func (mr *MockTransactionManagementServiceHandlerMockRecorder) DownloadTransaction(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DownloadTransaction", reflect.TypeOf((*MockTransactionManagementServiceHandler)(nil).DownloadTransaction), arg0, arg1)
+}
+
 // GetTransactions mocks base method.
 func (m *MockTransactionManagementServiceHandler) GetTransactions(arg0 http.ResponseWriter, arg1 *http.Request) {
 	m.ctrl.T.Helper()

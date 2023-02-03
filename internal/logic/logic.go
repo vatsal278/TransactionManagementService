@@ -112,7 +112,6 @@ func (l transactionManagementServiceLogic) NewTransaction(transaction model.Tran
 }
 
 func (l transactionManagementServiceLogic) DownloadTransaction(id string, cookie string) *respModel.Response {
-	log.Info(id)
 	transactions, _, err := l.DsSvc.Get(map[string]interface{}{"transaction_id": id}, 1, 0)
 	if err != nil {
 		log.Error(err)
@@ -151,14 +150,15 @@ func (l transactionManagementServiceLogic) DownloadTransaction(id string, cookie
 		}
 	}
 	if response.StatusCode != http.StatusOK {
-		log.Info("Status Not OK,%s", response.StatusCode)
+		log.Info("Status Not OK", response.StatusCode)
 		return &respModel.Response{
 			Status:  http.StatusInternalServerError,
 			Message: codes.GetErr(codes.ErrFetchinDataUserSvc),
 			Data:    nil,
 		}
 	}
-	var user model.UserDetails
+	var userResp respModel.Response
+	//var user model.UserDetails
 	by, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return &respModel.Response{
@@ -167,17 +167,28 @@ func (l transactionManagementServiceLogic) DownloadTransaction(id string, cookie
 			Data:    nil,
 		}
 	}
-	err = json.Unmarshal(by, &user)
+	err = json.Unmarshal(by, &userResp)
 	if err != nil {
+		log.Error(err)
 		return &respModel.Response{
 			Status:  http.StatusInternalServerError,
 			Message: codes.GetErr(codes.ErrUnmarshall),
 			Data:    nil,
 		}
 	}
+	log.Info(userResp.Data)
+	user, ok := userResp.Data.(map[string]interface{})
+	if !ok {
+		return &respModel.Response{
+			Status:  http.StatusInternalServerError,
+			Message: "error assert response data",
+			Data:    nil,
+		}
+	}
+	log.Info(transactions[0].Comment)
 	pdfSvc := l.UtilSvc.PdfSvc.PdfService
-	pdf, err := pdfSvc.GeneratePdf(map[string]interface{}{"values": map[string]interface{}{
-		"Name":                      user.Name,
+	pdf, err := pdfSvc.GeneratePdf(map[string]interface{}{
+		"Name":                      user["Name"],
 		"TransferFromAccountNumber": transactions[0].AccountNumber,
 		"TransferToAccountNumber":   transactions[0].TransferTo,
 		"TransactionId":             transactions[0].TransactionId,
@@ -186,7 +197,7 @@ func (l transactionManagementServiceLogic) DownloadTransaction(id string, cookie
 		"Status":                    transactions[0].Status,
 		"Type":                      transactions[0].Type,
 		"Comment":                   transactions[0].Comment,
-	}}, l.UtilSvc.PdfSvc.UuId)
+	}, l.UtilSvc.PdfSvc.UuId)
 	if err != nil {
 		return &respModel.Response{
 			Status:  http.StatusInternalServerError,
