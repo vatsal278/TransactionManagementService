@@ -140,7 +140,7 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 			},
 			setup: func() (*transactionManagementService, *http.Request) {
 				mockLogic := mock.NewMockTransactionManagementServiceLogicIer(mockCtrl)
-				mockLogic.EXPECT().NewTransaction(model.Transaction{
+				mockLogic.EXPECT().NewTransaction(model.NewTransaction{
 					UserId:        "1234",
 					AccountNumber: 1,
 					Amount:        1000,
@@ -165,6 +165,7 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 					Comment:       "shopping",
 				})
 				if err != nil {
+					t.Log(err)
 					t.Fail()
 				}
 				r := httptest.NewRequest("POST", "/transactions/new", bytes.NewBuffer(by))
@@ -174,7 +175,8 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 			want: func(rec httptest.ResponseRecorder) {
 				b, err := ioutil.ReadAll(rec.Body)
 				if err != nil {
-					return
+					t.Log(err)
+					t.Fail()
 				}
 				var response respModel.Response
 				err = json.Unmarshal(b, &response)
@@ -183,6 +185,9 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 					Message: codes.GetErr(codes.Success),
 					Data:    nil,
 				}
+				if !reflect.DeepEqual(rec.Code, http.StatusCreated) {
+					t.Errorf("Want: %v, Got: %v", http.StatusCreated, rec.Code)
+				}
 				if !reflect.DeepEqual(&response, tempResp) {
 					t.Errorf("Want: %v, Got: %v", tempResp, &response)
 				}
@@ -190,7 +195,7 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 			},
 		},
 		{
-			name: "Failure :: CreateAccount:: Failure assert user_id",
+			name: "Failure :: NewTransaction:: Failure assert user_id",
 			setup: func() (*transactionManagementService, *http.Request) {
 				mockLogic := mock.NewMockTransactionManagementServiceLogicIer(mockCtrl)
 				svc := &transactionManagementService{
@@ -203,7 +208,8 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 			want: func(rec httptest.ResponseRecorder) {
 				b, err := ioutil.ReadAll(rec.Body)
 				if err != nil {
-					return
+					t.Log(err)
+					t.Fail()
 				}
 				var response respModel.Response
 				err = json.Unmarshal(b, &response)
@@ -212,13 +218,16 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 					Message: codes.GetErr(codes.ErrAssertUserid),
 					Data:    nil,
 				}
+				if !reflect.DeepEqual(rec.Code, http.StatusBadRequest) {
+					t.Errorf("Want: %v, Got: %v", http.StatusBadRequest, rec.Code)
+				}
 				if !reflect.DeepEqual(&response, tempResp) {
 					t.Errorf("Want: %v, Got: %v", tempResp, &response)
 				}
 			},
 		},
 		{
-			name: "Failure :: CreateAccount:: Read all failure",
+			name: "Failure :: NewTransaction:: Read all failure",
 			setup: func() (*transactionManagementService, *http.Request) {
 				mockLogic := mock.NewMockTransactionManagementServiceLogicIer(mockCtrl)
 				svc := &transactionManagementService{
@@ -231,7 +240,8 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 			want: func(rec httptest.ResponseRecorder) {
 				b, err := ioutil.ReadAll(rec.Body)
 				if err != nil {
-					return
+					t.Log(err)
+					t.Fail()
 				}
 				var response respModel.Response
 				err = json.Unmarshal(b, &response)
@@ -240,13 +250,16 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 					Message: "request body read : test error",
 					Data:    nil,
 				}
+				if !reflect.DeepEqual(rec.Code, http.StatusInternalServerError) {
+					t.Errorf("Want: %v, Got: %v", http.StatusInternalServerError, rec.Code)
+				}
 				if !reflect.DeepEqual(&response, tempResp) {
 					t.Errorf("Want: %v, Got: %v", tempResp, &response)
 				}
 			},
 		},
 		{
-			name: "Failure :: CreateAccount:: json unmarshall failure",
+			name: "Failure :: NewTransaction:: json unmarshall failure",
 			setup: func() (*transactionManagementService, *http.Request) {
 				mockLogic := mock.NewMockTransactionManagementServiceLogicIer(mockCtrl)
 				svc := &transactionManagementService{
@@ -259,7 +272,8 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 			want: func(rec httptest.ResponseRecorder) {
 				b, err := ioutil.ReadAll(rec.Body)
 				if err != nil {
-					return
+					t.Log(err)
+					t.Fail()
 				}
 				var response respModel.Response
 				err = json.Unmarshal(b, &response)
@@ -267,6 +281,9 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 					Status:  http.StatusBadRequest,
 					Message: "put data into data: unexpected end of JSON input",
 					Data:    nil,
+				}
+				if !reflect.DeepEqual(rec.Code, http.StatusBadRequest) {
+					t.Errorf("Want: %v, Got: %v", http.StatusBadRequest, rec.Code)
 				}
 				if !reflect.DeepEqual(&response, tempResp) {
 					t.Errorf("Want: %v, Got: %v", tempResp, &response)
@@ -295,7 +312,59 @@ func TestTransactionManagementService_GetTransactions(t *testing.T) {
 		want  func(recorder httptest.ResponseRecorder)
 	}{
 		{
-			name: "Success",
+			name: "Success::GetTransaction",
+			setup: func() (*transactionManagementService, *http.Request) {
+				mockLogic := mock.NewMockTransactionManagementServiceLogicIer(mockCtrl)
+				mockLogic.EXPECT().GetTransactions("1234", 2, 2).Times(1).Return(&respModel.Response{
+					Status:  http.StatusOK,
+					Message: codes.GetErr(codes.Success),
+					Data: model.PaginatedResponse{Response: []model.Transaction{{Amount: 1000, AccountNumber: 1}}, Pagination: model.Paginate{
+						CurrentPage: 1,
+						NextPage:    -1,
+						TotalPage:   1,
+					}},
+				})
+				svc := &transactionManagementService{
+					logic: mockLogic,
+				}
+				r := httptest.NewRequest("GET", "/transactions", nil)
+				req := r.URL.Query()
+				req.Add("limit", "2")
+				req.Add("page", "2")
+				r.URL.RawQuery = req.Encode()
+				ctx := session.SetSession(r.Context(), model.SessionStruct{UserId: "1234"})
+				return svc, r.WithContext(ctx)
+			},
+			want: func(rec httptest.ResponseRecorder) {
+				b, err := ioutil.ReadAll(rec.Body)
+				if err != nil {
+					t.Log(err)
+					t.Fail()
+				}
+				tempResp := &respModel.Response{
+					Status:  http.StatusOK,
+					Message: codes.GetErr(codes.Success),
+					Data: model.PaginatedResponse{Response: []model.Transaction{{Amount: 1000, AccountNumber: 1}}, Pagination: model.Paginate{
+						CurrentPage: 1,
+						NextPage:    -1,
+						TotalPage:   1,
+					}},
+				}
+				marshal, err := json.Marshal(&tempResp)
+				if err != nil {
+					t.Log(err)
+					t.Fail()
+				}
+				if !reflect.DeepEqual(rec.Code, http.StatusOK) {
+					t.Errorf("Want: %v, Got: %v", http.StatusOK, rec.Code)
+				}
+				if strings.Compare(string(marshal), string(b)) != -1 {
+					t.Errorf("Want: %v, Got: %v", string(marshal), string(b))
+				}
+			},
+		},
+		{
+			name: "Success::GetTransaction:: default limit and page",
 			setup: func() (*transactionManagementService, *http.Request) {
 				mockLogic := mock.NewMockTransactionManagementServiceLogicIer(mockCtrl)
 				mockLogic.EXPECT().GetTransactions("1234", 5, 1).Times(1).Return(&respModel.Response{
@@ -311,13 +380,16 @@ func TestTransactionManagementService_GetTransactions(t *testing.T) {
 					logic: mockLogic,
 				}
 				r := httptest.NewRequest("GET", "/transactions", nil)
+				r.URL.Query().Set("limit", "10")
+				r.URL.Query().Set("page", "1")
 				ctx := session.SetSession(r.Context(), model.SessionStruct{UserId: "1234"})
 				return svc, r.WithContext(ctx)
 			},
 			want: func(rec httptest.ResponseRecorder) {
 				b, err := ioutil.ReadAll(rec.Body)
 				if err != nil {
-					return
+					t.Log(err)
+					t.Fail()
 				}
 				tempResp := &respModel.Response{
 					Status:  http.StatusOK,
@@ -330,7 +402,11 @@ func TestTransactionManagementService_GetTransactions(t *testing.T) {
 				}
 				marshal, err := json.Marshal(&tempResp)
 				if err != nil {
-					return
+					t.Log(err)
+					t.Fail()
+				}
+				if !reflect.DeepEqual(rec.Code, http.StatusOK) {
+					t.Errorf("Want: %v, Got: %v", http.StatusOK, rec.Code)
 				}
 				if strings.Compare(string(marshal), string(b)) != -1 {
 					t.Errorf("Want: %v, Got: %v", string(marshal), string(b))
@@ -338,7 +414,7 @@ func TestTransactionManagementService_GetTransactions(t *testing.T) {
 			},
 		},
 		{
-			name: "Failure:: logic :: internal server error",
+			name: "Failure::GetTransaction:: logic-internal server error",
 			setup: func() (*transactionManagementService, *http.Request) {
 				mockLogic := mock.NewMockTransactionManagementServiceLogicIer(mockCtrl)
 				svc := &transactionManagementService{
@@ -351,7 +427,8 @@ func TestTransactionManagementService_GetTransactions(t *testing.T) {
 			want: func(rec httptest.ResponseRecorder) {
 				b, err := ioutil.ReadAll(rec.Body)
 				if err != nil {
-					return
+					t.Log(err)
+					t.Fail()
 				}
 				var response respModel.Response
 				err = json.Unmarshal(b, &response)
@@ -360,13 +437,16 @@ func TestTransactionManagementService_GetTransactions(t *testing.T) {
 					Message: codes.GetErr(codes.ErrAssertUserid),
 					Data:    nil,
 				}
+				if !reflect.DeepEqual(rec.Code, http.StatusBadRequest) {
+					t.Errorf("Want: %v, Got: %v", http.StatusBadRequest, rec.Code)
+				}
 				if !reflect.DeepEqual(&response, tempResp) {
 					t.Errorf("Want: %v, Got: %v", tempResp, &response)
 				}
 			},
 		},
 		{
-			name: "Failure:: err asserting to string",
+			name: "Failure::GetTransaction:: err asserting to string",
 			setup: func() (*transactionManagementService, *http.Request) {
 				mockLogic := mock.NewMockTransactionManagementServiceLogicIer(mockCtrl)
 				svc := &transactionManagementService{
@@ -379,7 +459,8 @@ func TestTransactionManagementService_GetTransactions(t *testing.T) {
 			want: func(rec httptest.ResponseRecorder) {
 				b, err := ioutil.ReadAll(rec.Body)
 				if err != nil {
-					return
+					t.Log(err)
+					t.Fail()
 				}
 				var response respModel.Response
 				err = json.Unmarshal(b, &response)
@@ -387,6 +468,9 @@ func TestTransactionManagementService_GetTransactions(t *testing.T) {
 					Status:  http.StatusBadRequest,
 					Message: codes.GetErr(codes.ErrAssertUserid),
 					Data:    nil,
+				}
+				if !reflect.DeepEqual(rec.Code, http.StatusBadRequest) {
+					t.Errorf("Want: %v, Got: %v", http.StatusBadRequest, rec.Code)
 				}
 				if !reflect.DeepEqual(&response, tempResp) {
 					t.Errorf("Want: %v, Got: %v", tempResp, &response)

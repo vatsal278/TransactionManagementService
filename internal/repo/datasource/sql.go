@@ -71,7 +71,11 @@ func (d sqlDs) Get(filter map[string]interface{}, limit int, offset int) ([]mode
 			return nil, 0, err
 		}
 	}
-	q += fmt.Sprintf(" ORDER BY created_at LIMIT %d OFFSET %d ;", limit, offset)
+	r := " ORDER BY created_at ;"
+	if limit > 0 || offset >= 0 {
+		r = fmt.Sprintf(" ORDER BY created_at LIMIT %d OFFSET %d ;", limit, offset)
+	}
+	q += r
 	rows, err := d.sqlSvc.Query(q)
 	if err != nil {
 		return nil, 0, err

@@ -14,24 +14,14 @@ import (
 )
 
 func TestSqlDs_HealthCheck(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping testing due to unavailability of testing environment")
+	db, _, err := sqlmock.New()
+	if err != nil {
+		t.Fail()
 	}
-	//include a failure case
-	dbcfg := config.DbCfg{
-		Port:      "9085",
-		Host:      "localhost",
-		Driver:    "mysql",
-		User:      "root",
-		Pass:      "pass",
-		DbName:    "useracc",
-		TableName: "newTemp",
-	}
-	dataBase := config.Connect(dbcfg, dbcfg.TableName)
 	svcConfig := config.SvcConfig{
-		DbSvc: config.DbSvc{Db: dataBase},
+		DbSvc: config.DbSvc{Db: db},
 	}
-	dB := NewSql(config.DbSvc(svcConfig.DbSvc), "newTemp")
+	dB := NewSql(svcConfig.DbSvc, "newTemp")
 
 	tests := []struct {
 		name        string
@@ -61,7 +51,7 @@ func TestSqlDs_HealthCheck(t *testing.T) {
 		})
 	}
 }
-func TestGet(t *testing.T) {
+func TestSqlDs_Get(t *testing.T) {
 	tests := []struct {
 		name        string
 		setupFunc   func() sqlDs
@@ -96,6 +86,8 @@ func TestGet(t *testing.T) {
 					UserId:        "4444-1111-2222-3333",
 					Amount:        1000,
 					TransferTo:    1234567890,
+					CreatedAt:     time.Now(),
+					UpdatedAt:     time.Now(),
 					Status:        "approved",
 					Type:          "debit",
 					Comment:       "no comments",
@@ -107,10 +99,14 @@ func TestGet(t *testing.T) {
 				if count != 1 {
 					t.Errorf("Want: %v, Got: %v", 3, count)
 				}
-				if !reflect.DeepEqual(rows[0].TransactionId, temp.TransactionId) {
-					t.Errorf("Want: %v, Got: %v", temp.TransactionId, rows[0].TransactionId)
+				if !reflect.DeepEqual(rows[0], temp) {
+					t.Errorf("Want: %v, Got: %v", temp, rows[0])
 					return
 				}
+				//if !reflect.DeepEqual(rows[0].TransactionId, temp.TransactionId) {
+				//	t.Errorf("Want: %v, Got: %v", temp.TransactionId, rows[0].TransactionId)
+				//	return
+				//}
 				if !reflect.DeepEqual(rows[0].AccountNumber, temp.AccountNumber) {
 					t.Errorf("Want: %v, Got: %v", temp.AccountNumber, rows[0].AccountNumber)
 					return
@@ -167,7 +163,7 @@ func TestGet(t *testing.T) {
 			},
 		},
 		{
-			name:   "FAILURE:: query error",
+			name:   "FAILURE::Get:: query error",
 			filter: map[string]interface{}{"userid": "1234"},
 			setupFunc: func() sqlDs {
 				db, mock, err := sqlmock.New()
@@ -189,7 +185,7 @@ func TestGet(t *testing.T) {
 			},
 		},
 		{
-			name:   "FAILURE:: query error:: 2",
+			name:   "FAILURE::Get:: query error::2",
 			filter: map[string]interface{}{"userid": "1234"},
 			setupFunc: func() sqlDs {
 				db, mock, err := sqlmock.New()
@@ -211,7 +207,7 @@ func TestGet(t *testing.T) {
 			},
 		},
 		{
-			name:   "FAILURE:: scan error:: 2",
+			name:   "FAILURE::Get:: scan error:: 2",
 			filter: map[string]interface{}{"userid": "1234"},
 			setupFunc: func() sqlDs {
 				db, mock, err := sqlmock.New()
@@ -256,7 +252,7 @@ func TestGet(t *testing.T) {
 }
 
 //
-func TestInsert(t *testing.T) {
+func TestSqlDs_Insert(t *testing.T) {
 	// table driven tests
 	tests := []struct {
 		name        string
@@ -268,7 +264,7 @@ func TestInsert(t *testing.T) {
 		validator   func(sqlmock.Sqlmock, error)
 	}{
 		{
-			name: "SUCCESS:: Insert Article",
+			name: "SUCCESS:: Insert Transaction",
 			data: model.Transaction{
 				UserId:        "1",
 				AccountNumber: 1,

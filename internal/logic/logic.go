@@ -21,8 +21,8 @@ import (
 type TransactionManagementServiceLogicIer interface {
 	HealthCheck() bool
 	GetTransactions(id string, limit int, page int) *respModel.Response
-	NewTransaction(transaction model.Transaction) *respModel.Response
 	DownloadTransaction(id string, cookie string) *respModel.Response
+	NewTransaction(transaction model.NewTransaction) *respModel.Response
 }
 
 type transactionManagementServiceLogic struct {
@@ -66,8 +66,18 @@ func (l transactionManagementServiceLogic) GetTransactions(id string, limit int,
 	}
 }
 
-func (l transactionManagementServiceLogic) NewTransaction(transaction model.Transaction) *respModel.Response {
-	transaction.TransactionId = uuid.NewString()
+func (l transactionManagementServiceLogic) NewTransaction(newTransaction model.NewTransaction) *respModel.Response {
+	transaction := model.Transaction{
+		UserId:        newTransaction.UserId,
+		AccountNumber: newTransaction.AccountNumber,
+		TransactionId: uuid.NewString(),
+		Amount:        newTransaction.Amount,
+		TransferTo:    newTransaction.TransferTo,
+		CreatedAt:     time.Now(),
+		Status:        newTransaction.Status,
+		Type:          newTransaction.Type,
+		Comment:       newTransaction.Comment,
+	}
 	err := l.DsSvc.Insert(transaction)
 	if err != nil {
 		log.Error(codes.GetErr(codes.ErrNewTransaction))
@@ -77,15 +87,14 @@ func (l transactionManagementServiceLogic) NewTransaction(transaction model.Tran
 			Data:    nil,
 		}
 	}
-	if transaction.Status != "approved" {
+	if newTransaction.Status != "approved" {
 		return &respModel.Response{
 			Status:  http.StatusCreated,
 			Message: "SUCCESS",
 			Data:    nil,
 		}
 	}
-
-	upTransaction := model.UpdateTransaction{AccountNumber: transaction.AccountNumber, Amount: transaction.Amount, TransactionType: transaction.Type}
+	upTransaction := model.UpdateTransaction{AccountNumber: newTransaction.AccountNumber, Amount: newTransaction.Amount, TransactionType: newTransaction.Type}
 	by, err := json.Marshal(upTransaction)
 	if err != nil {
 		log.Error(codes.GetErr(codes.ErrNewTransaction))
@@ -102,7 +111,11 @@ func (l transactionManagementServiceLogic) NewTransaction(transaction model.Tran
 			return
 		}
 		client := http.Client{Timeout: 3 * time.Second}
-		client.Do(req)
+		_, err = client.Do(req)
+		if err != nil {
+			log.Error(err)
+			return
+		}
 	}(by)
 	return &respModel.Response{
 		Status:  http.StatusCreated,

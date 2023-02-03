@@ -1,17 +1,17 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/PereRohit/util/log"
 	"github.com/PereRohit/util/request"
 	"github.com/gorilla/mux"
+	"github.com/PereRohit/util/response"
 	"github.com/vatsal278/TransactionManagementService/internal/codes"
 	"github.com/vatsal278/TransactionManagementService/internal/config"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
 	"github.com/vatsal278/TransactionManagementService/pkg/session"
 	"net/http"
 	"strconv"
-
-	"github.com/PereRohit/util/response"
 
 	"github.com/vatsal278/TransactionManagementService/internal/logic"
 	"github.com/vatsal278/TransactionManagementService/internal/repo/datasource"
@@ -64,20 +64,13 @@ func (svc transactionManagementService) GetTransactions(w http.ResponseWriter, r
 	queryParams := r.URL.Query()
 	limit, err := strconv.Atoi(queryParams.Get("limit"))
 	if err != nil || limit == 0 {
-
-		log.Info(codes.GetErr(codes.ErrDefaultLimit), queryParams.Get("limit"))
+		log.Info(fmt.Sprintf("setting default limit as %d as error: %+v, query: %s", 5, err, queryParams.Get("limit")))
 		limit = 5
-		if err != nil {
-			log.Error(err)
-		}
 	}
 	page, err := strconv.Atoi(queryParams.Get("page"))
 	if err != nil || page == 0 {
-		log.Info(codes.GetErr(codes.ErrDefaultPage), queryParams.Get("page"))
+		log.Info(fmt.Sprintf("setting default page as %d as error: %+v, query: %s", 1, err, queryParams.Get("page")))
 		page = 1
-		if err != nil {
-			log.Error(err)
-		}
 	}
 	resp := svc.logic.GetTransactions(session.UserId, limit, page)
 	response.ToJson(w, resp.Status, resp.Message, resp.Data)
@@ -90,13 +83,14 @@ func (svc transactionManagementService) NewTransaction(w http.ResponseWriter, r 
 		response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrAssertUserid), nil)
 		return
 	}
-	var newTransaction model.Transaction
+	var newTransaction model.NewTransaction
 	status, err := request.FromJson(r, &newTransaction)
 	if err != nil {
 		log.Error(err)
 		response.ToJson(w, status, err.Error(), nil)
 		return
 	}
+
 	newTransaction.UserId = session.UserId
 	resp := svc.logic.NewTransaction(newTransaction)
 	response.ToJson(w, resp.Status, resp.Message, resp.Data)
