@@ -76,22 +76,23 @@ func TestSqlDs_Get(t *testing.T) {
 					table:  "newTemp",
 				}
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(`transaction_id`) FROM newTemp WHERE user_id = '1234' AND account_number = 1")).WillReturnError(nil).WillReturnRows(sqlmock.NewRows([]string{"count(transaction_id)"}).AddRow("1"))
-				mock.ExpectQuery("SELECT transaction_id, account_number, user_id, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE user_id = '1234' AND account_number = 1 ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnRows(sqlmock.NewRows([]string{"transaction_id", "account_number", "user_id", "amount", "transfer_to", "created_at", "updated_at", "status", "type", "comment"}).AddRow("0000-1111-2222-3333", 1, "4444-1111-2222-3333", 1000, 1234567890, time.Now(), time.Now(), "approved", "debit", "no comments"))
+				mock.ExpectQuery("SELECT transaction_id, account_number, user_id, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE user_id = '1234' AND account_number = 1 ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnRows(sqlmock.NewRows([]string{"transaction_id", "account_number", "user_id", "amount", "transfer_to", "created_at", "updated_at", "status", "type", "comment"}).AddRow("0000-1111-2222-3333", 1, "4444-1111-2222-3333", 1000, 1234567890, time.Date(2023, time.December, 1, 1, 1, 1, 0, time.UTC), time.Date(2023, time.December, 1, 1, 1, 1, 0, time.UTC), "approved", "debit", "no comments"))
 				return dB
 			},
 			validator: func(rows []model.Transaction, count int, err error) {
-				temp := model.Transaction{
+				temp := []model.Transaction{{
 					TransactionId: "0000-1111-2222-3333",
 					AccountNumber: 1,
 					UserId:        "4444-1111-2222-3333",
 					Amount:        1000,
 					TransferTo:    1234567890,
-					CreatedAt:     time.Now(),
-					UpdatedAt:     time.Now(),
+					CreatedAt:     time.Date(2023, time.December, 1, 1, 1, 1, 0, time.UTC),
+					UpdatedAt:     time.Date(2023, time.December, 1, 1, 1, 1, 0, time.UTC),
 					Status:        "approved",
 					Type:          "debit",
 					Comment:       "no comments",
-				}
+				}}
+
 				if err != nil {
 					t.Errorf("Want: %v, Got: %v", nil, err)
 					return
@@ -99,43 +100,10 @@ func TestSqlDs_Get(t *testing.T) {
 				if count != 1 {
 					t.Errorf("Want: %v, Got: %v", 3, count)
 				}
-				if !reflect.DeepEqual(rows[0], temp) {
-					t.Errorf("Want: %v, Got: %v", temp, rows[0])
+				if !reflect.DeepEqual(rows, temp) {
+					t.Errorf("Want: %v, Got: %v", temp, rows)
 					return
 				}
-				//if !reflect.DeepEqual(rows[0].TransactionId, temp.TransactionId) {
-				//	t.Errorf("Want: %v, Got: %v", temp.TransactionId, rows[0].TransactionId)
-				//	return
-				//}
-				if !reflect.DeepEqual(rows[0].AccountNumber, temp.AccountNumber) {
-					t.Errorf("Want: %v, Got: %v", temp.AccountNumber, rows[0].AccountNumber)
-					return
-				}
-				if !reflect.DeepEqual(rows[0].UserId, temp.UserId) {
-					t.Errorf("Want: %v, Got: %v", temp.UserId, rows[0].UserId)
-					return
-				}
-				if !reflect.DeepEqual(rows[0].Amount, temp.Amount) {
-					t.Errorf("Want: %v, Got: %v", temp.Amount, rows[0].Amount)
-					return
-				}
-				if !reflect.DeepEqual(rows[0].TransferTo, temp.TransferTo) {
-					t.Errorf("Want: %v, Got: %v", temp.TransferTo, rows[0].TransferTo)
-					return
-				}
-				if !reflect.DeepEqual(rows[0].Type, temp.Type) {
-					t.Errorf("Want: %v, Got: %v", temp.Type, rows[0].Type)
-					return
-				}
-				if !reflect.DeepEqual(rows[0].Status, temp.Status) {
-					t.Errorf("Want: %v, Got: %v", temp.Status, rows[0].Status)
-					return
-				}
-				if !reflect.DeepEqual(rows[0].Comment, temp.Comment) {
-					t.Errorf("Want: %v, Got: %v", temp.Comment, rows[0].Comment)
-					return
-				}
-
 			},
 		},
 		{

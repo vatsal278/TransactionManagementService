@@ -397,7 +397,7 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 				},
 				Cfg: &config.Config{},
 			})
-			hit = false
+			hit := false
 			x := middleware.ExtractUser(http.HandlerFunc(test))
 			x.ServeHTTP(res, req)
 
