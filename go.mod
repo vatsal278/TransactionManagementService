@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/vatsal278/go-redis-cache v1.1.0
-	github.com/vatsal278/html-pdf-service v0.0.0-20221130095009-d122cd80444d
+	github.com/vatsal278/html-pdf-service v0.0.0-20230203094432-747f402e3f8e
 	golang.org/x/net v0.0.0-20220607020251-c690dde0001d
 )
 

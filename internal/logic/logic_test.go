@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"encoding/json"
 	"errors"
 	respModel "github.com/PereRohit/util/model"
 	"github.com/PereRohit/util/response"
@@ -10,14 +11,13 @@ import (
 	"github.com/vatsal278/TransactionManagementService/internal/codes"
 	"github.com/vatsal278/TransactionManagementService/internal/config"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
-	"github.com/vatsal278/html-pdf-service/pkg/sdk"
+	"github.com/vatsal278/TransactionManagementService/internal/repo/datasource"
+	"github.com/vatsal278/TransactionManagementService/pkg/mock"
+	pdfMock "github.com/vatsal278/html-pdf-service/pkg/mock"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"testing"
-
-	"github.com/vatsal278/TransactionManagementService/internal/repo/datasource"
-	"github.com/vatsal278/TransactionManagementService/pkg/mock"
 )
 
 type Reader string
@@ -315,95 +315,38 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
 					response.ToJson(w, http.StatusOK, "Success", map[string]interface{}{"Name": "abc"})
 				})
+				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
+				mockPdf.EXPECT().GeneratePdf(gomock.Any(), gomock.Any()).Return([]byte("PDF"), nil)
 				srv := httptest.NewServer(router)
-
-				return mockDs, config.UtilSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: sdk.NewHtmlToPdfSvc("")}}
+				return mockDs, config.UtilSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},
 			want: func(resp *respModel.Response) {
-				var users = model.GetTransaction{AccountNumber: 1}
 				temp := respModel.Response{
 					Status:  http.StatusOK,
 					Message: "SUCCESS",
-					Data:    users,
+					Data:    []byte("PDF"),
 				}
-				res, ok := resp.Data.(model.PaginatedResponse)
-				if !ok {
-					t.Log("fail")
-					t.Fail()
-				}
-				if !reflect.DeepEqual(&resp.Status, &temp.Status) {
-					t.Errorf("Want: %v, Got: %v", &temp.Status, &resp.Status)
+				if !reflect.DeepEqual(resp.Status, temp.Status) {
+					t.Errorf("Want: %v, Got: %v", temp.Status, resp.Status)
 				}
 				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
-					t.Errorf("Want: %v, Got: %v", &temp.Message, &resp.Message)
+					t.Errorf("Want: %v, Got: %v", temp.Message, resp.Message)
 				}
-				if !reflect.DeepEqual(res.Response[0].AccountNumber, 1) {
-					t.Errorf("Want: %v, Got: %v", 1, res.Response[0].AccountNumber)
-				}
-				if !reflect.DeepEqual(res.Pagination, model.Paginate{
-					CurrentPage: 1,
-					NextPage:    -1,
-					TotalPage:   1,
-				}) {
-					t.Errorf("Want: %v, Got: %v", model.Paginate{
-						CurrentPage: 1,
-						NextPage:    -1,
-						TotalPage:   1,
-					}, res.Pagination)
+				if !reflect.DeepEqual(&resp.Data, &temp.Data) {
+					t.Errorf("Want: %v, Got: %v", temp.Data, resp.Data)
 				}
 			},
 		},
 		{
-			name:        "Success :: AccDetails:: count_offset>limit",
+			name:        "Failure :: DownloadPdf :: error from db",
 			credentials: "123",
 			setup: func() (datasource.DataSourceI, config.UtilSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
 				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
-				mockDs.EXPECT().Get(map[string]interface{}{"user_id": "123"}, 5, 0).Times(1).Return(trans, 100, nil)
-				return mockDs, config.UtilSvc{}
-			},
-			want: func(resp *respModel.Response) {
-				var users = model.GetTransaction{AccountNumber: 1}
-				temp := respModel.Response{
-					Status:  http.StatusOK,
-					Message: "SUCCESS",
-					Data:    users,
-				}
-				res, ok := resp.Data.(model.PaginatedResponse)
-				if !ok {
-					t.Log("fail")
-					t.Fail()
-				}
-				if !reflect.DeepEqual(&resp.Status, &temp.Status) {
-					t.Errorf("Want: %v, Got: %v", &temp.Status, &resp.Status)
-				}
-				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
-					t.Errorf("Want: %v, Got: %v", &temp.Message, &resp.Message)
-				}
-				if !reflect.DeepEqual(res.Response[0].AccountNumber, 1) {
-					t.Errorf("Want: %v, Got: %v", 1, res.Response[0].AccountNumber)
-				}
-				if !reflect.DeepEqual(res.Pagination, model.Paginate{
-					CurrentPage: 1,
-					NextPage:    2,
-					TotalPage:   20,
-				}) {
-					t.Errorf("Want: %v, Got: %v", model.Paginate{
-						CurrentPage: 1,
-						NextPage:    -1,
-						TotalPage:   1,
-					}, res.Pagination)
-				}
-			},
-		},
-		{
-			name:        "Failure :: AccDetails :: db err",
-			credentials: "123",
-			setup: func() (datasource.DataSourceI, config.UtilSvc) {
-				mockDs := mock.NewMockDataSourceI(mockCtrl)
-				mockDs.EXPECT().Get(map[string]interface{}{"user_id": "123"}, 5, 0).Times(1).Return(nil, 0, errors.New("error"))
-				return mockDs, config.UtilSvc{}
+				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 1, 0).Times(1).Return(trans, 1, errors.New("error db"))
+				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
+				return mockDs, config.UtilSvc{UserSvc: "", PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
@@ -411,8 +354,202 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 					Message: codes.GetErr(codes.ErrGetTransaction),
 					Data:    nil,
 				}
-				if !reflect.DeepEqual(resp, &temp) {
-					t.Errorf("Want: %v, Got: %v", &temp, resp)
+				if !reflect.DeepEqual(resp.Status, temp.Status) {
+					t.Errorf("Want: %v, Got: %v", temp.Status, resp.Status)
+				}
+				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
+					t.Errorf("Want: %v, Got: %v", temp.Message, resp.Message)
+				}
+				if !reflect.DeepEqual(&resp.Data, &temp.Data) {
+					t.Errorf("Want: %v, Got: %v", temp.Data, resp.Data)
+				}
+			},
+		},
+		{
+			name:        "Failure :: DownloadPdf :: no transaction found in db",
+			credentials: "123",
+			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+				mockDs := mock.NewMockDataSourceI(mockCtrl)
+				var trans []model.Transaction
+				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 1, 0).Times(1).Return(trans, 1, nil)
+				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
+				return mockDs, config.UtilSvc{UserSvc: "", PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+			},
+			want: func(resp *respModel.Response) {
+				temp := respModel.Response{
+					Status:  http.StatusBadRequest,
+					Message: codes.GetErr(codes.ErrGetTransaction),
+					Data:    nil,
+				}
+				if !reflect.DeepEqual(resp.Status, temp.Status) {
+					t.Errorf("Want: %v, Got: %v", temp.Status, resp.Status)
+				}
+				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
+					t.Errorf("Want: %v, Got: %v", temp.Message, resp.Message)
+				}
+				if !reflect.DeepEqual(&resp.Data, &temp.Data) {
+					t.Errorf("Want: %v, Got: %v", temp.Data, resp.Data)
+				}
+			},
+		},
+		{
+			name:        "Failure :: DownloadPdf :: error making request to user svc",
+			credentials: "123",
+			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+				mockDs := mock.NewMockDataSourceI(mockCtrl)
+				var trans []model.Transaction
+				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
+				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 1, 0).Times(1).Return(trans, 1, nil)
+				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
+				return mockDs, config.UtilSvc{UserSvc: "", PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+			},
+			want: func(resp *respModel.Response) {
+				temp := respModel.Response{
+					Status:  http.StatusInternalServerError,
+					Message: codes.GetErr(codes.ErrFetchinDataUserSvc),
+					Data:    nil,
+				}
+				if !reflect.DeepEqual(resp.Status, temp.Status) {
+					t.Errorf("Want: %v, Got: %v", temp.Status, resp.Status)
+				}
+				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
+					t.Errorf("Want: %v, Got: %v", temp.Message, resp.Message)
+				}
+				if !reflect.DeepEqual(&resp.Data, &temp.Data) {
+					t.Errorf("Want: %v, Got: %v", temp.Data, resp.Data)
+				}
+			},
+		},
+		{
+			name:        "Failure :: DownloadPdf ::",
+			credentials: "123",
+			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+				mockDs := mock.NewMockDataSourceI(mockCtrl)
+				var trans []model.Transaction
+				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
+				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 1, 0).Times(1).Return(trans, 1, nil)
+				router := mux.NewRouter()
+				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
+					response.ToJson(w, http.StatusBadRequest, "Success", map[string]interface{}{"Name": "abc"})
+				})
+				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
+				srv := httptest.NewServer(router)
+				return mockDs, config.UtilSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+			},
+			want: func(resp *respModel.Response) {
+				temp := respModel.Response{
+					Status:  http.StatusInternalServerError,
+					Message: codes.GetErr(codes.ErrFetchinDataUserSvc),
+					Data:    nil,
+				}
+				if !reflect.DeepEqual(resp.Status, temp.Status) {
+					t.Errorf("Want: %v, Got: %v", temp.Status, resp.Status)
+				}
+				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
+					t.Errorf("Want: %v, Got: %v", temp.Message, resp.Message)
+				}
+				if !reflect.DeepEqual(&resp.Data, &temp.Data) {
+					t.Errorf("Want: %v, Got: %v", temp.Data, resp.Data)
+				}
+			},
+		},
+		{
+			name:        "Failure :: DownloadPdf :: error unmarshall response",
+			credentials: "123",
+			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+				mockDs := mock.NewMockDataSourceI(mockCtrl)
+				var trans []model.Transaction
+				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
+				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 1, 0).Times(1).Return(trans, 1, nil)
+				router := mux.NewRouter()
+				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
+					json.NewEncoder(w).Encode(Reader(""))
+				})
+				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
+				srv := httptest.NewServer(router)
+				return mockDs, config.UtilSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+			},
+			want: func(resp *respModel.Response) {
+				temp := respModel.Response{
+					Status:  http.StatusInternalServerError,
+					Message: codes.GetErr(codes.ErrUnmarshall),
+					Data:    nil,
+				}
+				if !reflect.DeepEqual(resp.Status, temp.Status) {
+					t.Errorf("Want: %v, Got: %v", temp.Status, resp.Status)
+				}
+				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
+					t.Errorf("Want: %v, Got: %v", temp.Message, resp.Message)
+				}
+				if !reflect.DeepEqual(&resp.Data, &temp.Data) {
+					t.Errorf("Want: %v, Got: %v", temp.Data, resp.Data)
+				}
+			},
+		},
+		{
+			name:        "Failure :: DownloadPdf :: error assert response data",
+			credentials: "123",
+			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+				mockDs := mock.NewMockDataSourceI(mockCtrl)
+				var trans []model.Transaction
+				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
+				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 1, 0).Times(1).Return(trans, 1, nil)
+				router := mux.NewRouter()
+				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
+					response.ToJson(w, http.StatusOK, "Success", Reader(""))
+				})
+				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
+				srv := httptest.NewServer(router)
+				return mockDs, config.UtilSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+			},
+			want: func(resp *respModel.Response) {
+				temp := respModel.Response{
+					Status:  http.StatusInternalServerError,
+					Message: "error assert response data",
+					Data:    nil,
+				}
+				if !reflect.DeepEqual(resp.Status, temp.Status) {
+					t.Errorf("Want: %v, Got: %v", temp.Status, resp.Status)
+				}
+				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
+					t.Errorf("Want: %v, Got: %v", temp.Message, resp.Message)
+				}
+				if !reflect.DeepEqual(&resp.Data, &temp.Data) {
+					t.Errorf("Want: %v, Got: %v", temp.Data, resp.Data)
+				}
+			},
+		},
+		{
+			name:        "Success :: DownloadPdf",
+			credentials: "123",
+			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+				mockDs := mock.NewMockDataSourceI(mockCtrl)
+				var trans []model.Transaction
+				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
+				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 1, 0).Times(1).Return(trans, 1, nil)
+				router := mux.NewRouter()
+				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
+					response.ToJson(w, http.StatusOK, "Success", map[string]interface{}{"Name": "abc"})
+				})
+				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
+				mockPdf.EXPECT().GeneratePdf(gomock.Any(), gomock.Any()).Return([]byte("PDF"), errors.New("pdf generate error"))
+				srv := httptest.NewServer(router)
+				return mockDs, config.UtilSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+			},
+			want: func(resp *respModel.Response) {
+				temp := respModel.Response{
+					Status:  http.StatusInternalServerError,
+					Message: codes.GetErr(codes.ErrPdf),
+					Data:    nil,
+				}
+				if !reflect.DeepEqual(resp.Status, temp.Status) {
+					t.Errorf("Want: %v, Got: %v", temp.Status, resp.Status)
+				}
+				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
+					t.Errorf("Want: %v, Got: %v", temp.Message, resp.Message)
+				}
+				if !reflect.DeepEqual(&resp.Data, &temp.Data) {
+					t.Errorf("Want: %v, Got: %v", temp.Data, resp.Data)
 				}
 			},
 		},

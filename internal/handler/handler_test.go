@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	respModel "github.com/PereRohit/util/model"
+	"github.com/gorilla/mux"
 	"github.com/vatsal278/TransactionManagementService/internal/codes"
 	"github.com/vatsal278/TransactionManagementService/internal/config"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
@@ -590,15 +591,16 @@ func TestTransactionManagementService_DownloadTransaction(t *testing.T) {
 			name: "Failure:: DownloadTransaction :: err asserting pdf data",
 			setup: func() (*transactionManagementService, *http.Request) {
 				mockLogic := mock.NewMockTransactionManagementServiceLogicIer(mockCtrl)
-				mockLogic.EXPECT().DownloadTransaction(gomock.Any(), gomock.Any()).Return(&respModel.Response{
+				mockLogic.EXPECT().DownloadTransaction("123", "4321").Return(&respModel.Response{
 					Status:  http.StatusOK,
 					Message: "Success",
-					Data:    []byte(""),
+					Data:    123,
 				})
 				svc := &transactionManagementService{
 					logic: mockLogic,
 				}
-				r := httptest.NewRequest("GET", "/transactions/download/:123", nil)
+				r := httptest.NewRequest("GET", "/transactions/download/123", nil)
+				r = mux.SetURLVars(r, map[string]string{"transaction_id": "123"})
 				ctx := session.SetSession(r.Context(), model.SessionStruct{UserId: "1234", Cookie: "4321"})
 				return svc, r.WithContext(ctx)
 			},

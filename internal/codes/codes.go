@@ -56,6 +56,8 @@ const (
 	ErrDefaultPage
 	ErrFetchinDataUserSvc
 	ErrPdf
+	ErrAssertResp
+	ErrAssertPdf
 )
 
 var errCodes = map[errCode]string{
@@ -108,6 +110,8 @@ var errCodes = map[errCode]string{
 	ErrDefaultLimit:        "changing limit to default value=5 previously it was",
 	ErrFetchinDataUserSvc:  "err fetching data from user mgmt svc",
 	ErrPdf:                 "err generating pdf",
+	ErrAssertResp:          "error assert response data",
+	ErrAssertPdf:           "error assert pdf []byte",
 }
 
 func GetErr(code errCode) string {

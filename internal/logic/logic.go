@@ -194,11 +194,10 @@ func (l transactionManagementServiceLogic) DownloadTransaction(id string, cookie
 	if !ok {
 		return &respModel.Response{
 			Status:  http.StatusInternalServerError,
-			Message: "error assert response data",
+			Message: codes.GetErr(codes.ErrAssertResp),
 			Data:    nil,
 		}
 	}
-	log.Info(transactions[0].Comment)
 	pdfSvc := l.UtilSvc.PdfSvc.PdfService
 	pdf, err := pdfSvc.GeneratePdf(map[string]interface{}{
 		"Name":                      user["Name"],

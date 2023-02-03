@@ -55,8 +55,8 @@ github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5Cc
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/vatsal278/go-redis-cache v1.1.0 h1:l7fVDRpmbkKMu4C9MkKd/+eEcLi74DK1iN1IWrRv8Do=
 github.com/vatsal278/go-redis-cache v1.1.0/go.mod h1:3WGzQ2Oy2QGn6NxjErikWJMvt0c+7xWHxoVJqrSHneQ=
-github.com/vatsal278/html-pdf-service v0.0.0-20221130095009-d122cd80444d h1:CkA5m/bXhMxr9LaaGlKNpxPPJl/y/gCBRrVJ2jhnOR4=
-github.com/vatsal278/html-pdf-service v0.0.0-20221130095009-d122cd80444d/go.mod h1:vaU9lCDNzsZb2OmHnf/3P7F9SuaImvetJ7wvWeoI/20=
+github.com/vatsal278/html-pdf-service v0.0.0-20230203094432-747f402e3f8e h1:czSBhNFdVnTDwUwk6FoaVzH3hOEqcIXst9FexHtjzvw=
+github.com/vatsal278/html-pdf-service v0.0.0-20230203094432-747f402e3f8e/go.mod h1:vaU9lCDNzsZb2OmHnf/3P7F9SuaImvetJ7wvWeoI/20=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
