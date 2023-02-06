@@ -114,7 +114,6 @@ func (l transactionManagementServiceLogic) NewTransaction(newTransaction model.N
 			return
 		}
 	}(by)
-	time.Sleep(5 * time.Second)
 	return &respModel.Response{
 		Status:  http.StatusCreated,
 		Message: "SUCCESS",
