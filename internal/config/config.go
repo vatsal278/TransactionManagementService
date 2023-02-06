@@ -26,6 +26,7 @@ type Config struct {
 	PdfServiceUrl    string       `json:"pdf_svc_url"`
 	UserSvcUrl       string       `json:"user_svc_url"`
 	HtmlTemplateFile string       `json:"html_template_file_path"`
+	TemplateUuid     string       `json:"html_template_file_uuid"`
 }
 
 type SvcConfig struct {
@@ -125,14 +126,17 @@ func InitSvcConfig(cfg Config) *SvcConfig {
 	if err != nil {
 		panic(err.Error())
 	}
-	uuid, err := pdfSvcI.Register(file)
-	if err != nil {
-		panic(err.Error())
+	if cfg.TemplateUuid == "" {
+		uuid, err := pdfSvcI.Register(file)
+		if err != nil {
+			panic(err.Error())
+		}
+		cfg.TemplateUuid = uuid
 	}
 	utilSvc := UtilSvc{
 		AccSvcUrl: cfg.AccSvcUrl,
 		UserSvc:   cfg.UserSvcUrl,
-		PdfSvc:    PdfSvc{PdfService: pdfSvcI, UuId: uuid},
+		PdfSvc:    PdfSvc{PdfService: pdfSvcI, UuId: cfg.TemplateUuid},
 	}
 	return &SvcConfig{
 		Cfg:                 &cfg,
