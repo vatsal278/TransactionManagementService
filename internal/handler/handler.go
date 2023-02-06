@@ -106,6 +106,7 @@ func (svc transactionManagementService) DownloadTransaction(w http.ResponseWrite
 	vars := mux.Vars(r)
 	if len(vars) == 0 {
 		response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrGetTransaction), nil)
+		return
 	}
 	resp := svc.logic.DownloadTransaction(vars["transaction_id"], session.Cookie)
 	if resp.Status != http.StatusOK {

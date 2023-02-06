@@ -512,7 +512,7 @@ func TestTransactionManagementService_DownloadTransaction(t *testing.T) {
 				}
 
 				r := httptest.NewRequest("GET", "/transactions/download/:123", nil)
-
+				r = mux.SetURLVars(r, map[string]string{"transaction_id": "123"})
 				ctx := session.SetSession(r.Context(), model.SessionStruct{UserId: "1234", Cookie: "456"})
 				return svc, r.WithContext(ctx)
 			},
@@ -567,6 +567,7 @@ func TestTransactionManagementService_DownloadTransaction(t *testing.T) {
 					logic: mockLogic,
 				}
 				r := httptest.NewRequest("GET", "/transactions/download/:123", nil)
+				r = mux.SetURLVars(r, map[string]string{"transaction_id": "123"})
 				ctx := session.SetSession(r.Context(), model.SessionStruct{UserId: "1234", Cookie: "4321"})
 				return svc, r.WithContext(ctx)
 			},
@@ -613,7 +614,7 @@ func TestTransactionManagementService_DownloadTransaction(t *testing.T) {
 				err = json.Unmarshal(b, &response)
 				tempResp := &respModel.Response{
 					Status:  http.StatusBadRequest,
-					Message: "error assert pdf []byte",
+					Message: codes.GetErr(codes.ErrAssertPdf),
 					Data:    nil,
 				}
 				if !reflect.DeepEqual(&response, tempResp) {
