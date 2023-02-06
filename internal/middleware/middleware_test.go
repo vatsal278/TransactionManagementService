@@ -23,21 +23,18 @@ import (
 	"time"
 )
 
-var x func()
-
-var hit = false
-
-func test(w http.ResponseWriter, r *http.Request) {
-	hit = true
-	c := r.Context()
-	sessionStruct := session.GetSession(c)
-	session, ok := sessionStruct.(model2.SessionStruct)
-	if !ok {
-		response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrAssertUserid), nil)
-		return
+func test(hit *bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		*hit = true
+		c := r.Context()
+		sessionStruct := session.GetSession(c)
+		session, ok := sessionStruct.(model2.SessionStruct)
+		if !ok {
+			response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrAssertUserid), nil)
+			return
+		}
+		response.ToJson(w, http.StatusOK, "passed", session.UserId)
 	}
-	response.ToJson(w, http.StatusOK, "passed", session.UserId)
-
 }
 
 func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
@@ -46,7 +43,7 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 	tests := []struct {
 		name      string
 		setupFunc func() (*http.Request, authentication.JWTService)
-		validator func(*httptest.ResponseRecorder)
+		validator func(*httptest.ResponseRecorder, *bool)
 	}{
 		{
 			name: "SUCCESS::ExtractUser",
@@ -66,9 +63,10 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 				})
 				return req, mockJwtSvc
 			},
-			validator: func(res *httptest.ResponseRecorder) {
-				if hit != true {
-					t.Errorf("Want: %v, Got: %v", true, hit)
+			validator: func(res *httptest.ResponseRecorder, hit *bool) {
+				if *hit != true {
+					t.Errorf("Want: %v, Got: %v", true, *hit)
+					return
 				}
 				by, _ := ioutil.ReadAll(res.Body)
 				result := model.Response{}
@@ -98,8 +96,8 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 				})
 				return req, mockJwtSvc
 			},
-			validator: func(res *httptest.ResponseRecorder) {
-				if hit != false {
+			validator: func(res *httptest.ResponseRecorder, hit *bool) {
+				if *hit != false {
 					t.Errorf("Want: %v, Got: %v", false, hit)
 				}
 				by, _ := ioutil.ReadAll(res.Body)
@@ -126,8 +124,8 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 				mockJwtSvc := mock.NewMockJWTService(mockCtrl)
 				return req, mockJwtSvc
 			},
-			validator: func(res *httptest.ResponseRecorder) {
-				if hit != false {
+			validator: func(res *httptest.ResponseRecorder, hit *bool) {
+				if *hit != false {
 					t.Errorf("Want: %v, Got: %v", false, hit)
 				}
 				by, _ := ioutil.ReadAll(res.Body)
@@ -163,8 +161,8 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 
 				return req, mockJwtSvc
 			},
-			validator: func(res *httptest.ResponseRecorder) {
-				if hit != false {
+			validator: func(res *httptest.ResponseRecorder, hit *bool) {
+				if *hit != false {
 					t.Errorf("Want: %v, Got: %v", false, hit)
 				}
 				by, _ := ioutil.ReadAll(res.Body)
@@ -201,8 +199,8 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 
 				return req, mockJwtSvc
 			},
-			validator: func(res *httptest.ResponseRecorder) {
-				if hit != false {
+			validator: func(res *httptest.ResponseRecorder, hit *bool) {
+				if *hit != false {
 					t.Errorf("Want: %v, Got: %v", false, hit)
 				}
 				by, _ := ioutil.ReadAll(res.Body)
@@ -238,8 +236,8 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 
 				return req, mockJwtSvc
 			},
-			validator: func(res *httptest.ResponseRecorder) {
-				if hit != false {
+			validator: func(res *httptest.ResponseRecorder, hit *bool) {
+				if *hit != false {
 					t.Errorf("Want: %v, Got: %v", false, hit)
 				}
 				by, _ := ioutil.ReadAll(res.Body)
@@ -279,8 +277,8 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 
 				return req, mockJwtSvc
 			},
-			validator: func(res *httptest.ResponseRecorder) {
-				if hit != false {
+			validator: func(res *httptest.ResponseRecorder, hit *bool) {
+				if *hit != false {
 					t.Errorf("Want: %v, Got: %v", false, hit)
 				}
 				by, _ := ioutil.ReadAll(res.Body)
@@ -319,8 +317,8 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 
 				return req, mockJwtSvc
 			},
-			validator: func(res *httptest.ResponseRecorder) {
-				if hit != false {
+			validator: func(res *httptest.ResponseRecorder, hit *bool) {
+				if *hit != false {
 					t.Errorf("Want: %v, Got: %v", false, hit)
 				}
 				by, _ := ioutil.ReadAll(res.Body)
@@ -359,8 +357,8 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 
 				return req, mockJwtSvc
 			},
-			validator: func(res *httptest.ResponseRecorder) {
-				if hit != false {
+			validator: func(res *httptest.ResponseRecorder, hit *bool) {
+				if *hit != false {
 					t.Errorf("Want: %v, Got: %v", false, hit)
 				}
 				by, _ := ioutil.ReadAll(res.Body)
@@ -397,11 +395,12 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 				},
 				Cfg: &config.Config{},
 			})
-			hit := false
-			x := middleware.ExtractUser(http.HandlerFunc(test))
+			var hit bool
+			testFunc := test(&hit)
+			x := middleware.ExtractUser(testFunc)
 			x.ServeHTTP(res, req)
 
-			tt.validator(res)
+			tt.validator(res, &hit)
 
 		})
 	}
@@ -414,7 +413,7 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 		config         config.Config
 		extractMsgFunc func(closer io.ReadCloser) (string, error)
 		setupFunc      func() (*http.Request, *redisMock.MockCacher)
-		validator      func(*httptest.ResponseRecorder)
+		validator      func(*httptest.ResponseRecorder, *bool)
 	}{
 		{
 			name:   "SUCCESS::Cacher::Cached Response",
@@ -432,8 +431,8 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 			extractMsgFunc: func(closer io.ReadCloser) (string, error) {
 				return "", nil
 			},
-			validator: func(res *httptest.ResponseRecorder) {
-				if hit != false {
+			validator: func(res *httptest.ResponseRecorder, hit *bool) {
+				if *hit != false {
 					t.Errorf("Want: %v, Got: %v", false, hit)
 					return
 				}
@@ -456,7 +455,7 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 			extractMsgFunc: func(closer io.ReadCloser) (string, error) {
 				return "", nil
 			},
-			validator: func(res *httptest.ResponseRecorder) {
+			validator: func(res *httptest.ResponseRecorder, hit *bool) {
 				by, _ := ioutil.ReadAll(res.Body)
 				result := model.Response{}
 				err := json.Unmarshal(by, &result)
@@ -466,7 +465,7 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 				}
 				expected := &model.Response{
 					Status:  http.StatusBadRequest,
-					Message: "1004: unable to assert userid",
+					Message: codes.GetErr(codes.ErrAssertUserid),
 					Data:    nil,
 				}
 				if !reflect.DeepEqual(&result, expected) {
@@ -488,8 +487,8 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 			extractMsgFunc: func(closer io.ReadCloser) (string, error) {
 				return "", nil
 			},
-			validator: func(res *httptest.ResponseRecorder) {
-				if hit != false {
+			validator: func(res *httptest.ResponseRecorder, hit *bool) {
+				if *hit != false {
 					t.Errorf("Want: %v, Got: %v", false, hit)
 					return
 				}
@@ -517,9 +516,9 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 			extractMsgFunc: func(closer io.ReadCloser) (string, error) {
 				return "", nil
 			},
-			validator: func(res *httptest.ResponseRecorder) {
-				if hit != true {
-					t.Errorf("Want: %v, Got: %v", true, hit)
+			validator: func(res *httptest.ResponseRecorder, hit *bool) {
+				if *hit != true {
+					t.Errorf("Want: %v, Got: %v", true, *hit)
 					return
 				}
 				var resp model.Response
@@ -546,9 +545,9 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 			extractMsgFunc: func(closer io.ReadCloser) (string, error) {
 				return "", nil
 			},
-			validator: func(res *httptest.ResponseRecorder) {
-				if hit != true {
-					t.Errorf("Want: %v, Got: %v", true, hit)
+			validator: func(res *httptest.ResponseRecorder, hit *bool) {
+				if *hit != true {
+					t.Errorf("Want: %v, Got: %v", true, *hit)
 					return
 				}
 				var resp model.Response
@@ -572,11 +571,12 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 			middleware := TransactionMgmtMiddleware{
 				cacher: cacher,
 				cfg:    cfg.Cfg}
-			hit = false
+			hit := false
+			testFunc := test(&hit)
 			x := middleware.Cacher(true)
-			x(http.HandlerFunc(test)).ServeHTTP(res, req)
+			x(testFunc).ServeHTTP(res, req)
 
-			tt.validator(res)
+			tt.validator(res, &hit)
 
 		})
 	}
