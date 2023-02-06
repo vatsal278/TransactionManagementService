@@ -62,7 +62,7 @@ func TestInitSvcConfig(t *testing.T) {
 						Cache:            CacheCfg{Duration: "1m"},
 						Cookie:           CookieStruct{ExpiryStr: "5m"},
 						PdfServiceUrl:    srv.URL,
-						HtmlTemplateFile: "./../../docs/scratch.html",
+						HtmlTemplateFile: "./../../docs/transaction-template.html",
 					},
 				}
 			},
@@ -79,12 +79,13 @@ func TestInitSvcConfig(t *testing.T) {
 						Cache:            CacheCfg{Duration: "1m", Time: time.Minute},
 						Cookie:           CookieStruct{ExpiryStr: "5m"},
 						PdfServiceUrl:    srv.URL,
-						HtmlTemplateFile: "./../../docs/scratch.html",
+						HtmlTemplateFile: "./../../docs/transaction-template.html",
+						TemplateUuid:     "123",
 					},
 					ServiceRouteVersion: "v2",
 					SvrCfg:              config.ServerConfig{},
 					PdfSvc:              PdfSvc{},
-					UtilService:         UtilSvc{PdfSvc: PdfSvc{UuId: "123"}},
+					ExternalService:     ExternalSvc{PdfSvc: PdfSvc{UuId: "123"}},
 				}
 				return required
 			},
@@ -371,7 +372,7 @@ func TestInitSvcConfig(t *testing.T) {
 			s := tt.args()
 			got := InitSvcConfig(s.cfg)
 			got.DbSvc.Db = nil
-			got.UtilService.PdfSvc.PdfService = nil
+			got.ExternalService.PdfSvc.PdfService = nil
 			got.Cacher.Cacher = nil
 			diff := testutil.Diff(got, tt.want(s))
 			if diff != "" {

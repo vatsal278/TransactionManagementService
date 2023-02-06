@@ -27,10 +27,10 @@ type TransactionManagementServiceLogicIer interface {
 
 type transactionManagementServiceLogic struct {
 	DsSvc   datasource.DataSourceI
-	UtilSvc config.UtilSvc
+	UtilSvc config.ExternalSvc
 }
 
-func NewTransactionManagementServiceLogic(ds datasource.DataSourceI, ut config.UtilSvc) TransactionManagementServiceLogicIer {
+func NewTransactionManagementServiceLogic(ds datasource.DataSourceI, ut config.ExternalSvc) TransactionManagementServiceLogicIer {
 	return &transactionManagementServiceLogic{
 		DsSvc:   ds,
 		UtilSvc: ut,
@@ -125,7 +125,7 @@ func (l transactionManagementServiceLogic) NewTransaction(newTransaction model.N
 }
 
 func (l transactionManagementServiceLogic) DownloadTransaction(id string, cookie string) *respModel.Response {
-	transactions, _, err := l.DsSvc.Get(map[string]interface{}{"transaction_id": id}, 1, 0)
+	transactions, _, err := l.DsSvc.Get(map[string]interface{}{"transaction_id": id}, 0, 0)
 	if err != nil {
 		log.Error(err)
 		return &respModel.Response{
@@ -189,7 +189,6 @@ func (l transactionManagementServiceLogic) DownloadTransaction(id string, cookie
 			Data:    nil,
 		}
 	}
-	log.Info(userResp.Data)
 	user, ok := userResp.Data.(map[string]interface{})
 	if !ok {
 		return &respModel.Response{

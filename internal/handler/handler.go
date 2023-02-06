@@ -32,7 +32,7 @@ type transactionManagementService struct {
 	logic logic.TransactionManagementServiceLogicIer
 }
 
-func NewTransactionManagementService(ds datasource.DataSourceI, ut config.UtilSvc) TransactionManagementServiceHandler {
+func NewTransactionManagementService(ds datasource.DataSourceI, ut config.ExternalSvc) TransactionManagementServiceHandler {
 	svc := &transactionManagementService{
 		logic: logic.NewTransactionManagementServiceLogic(ds, ut),
 	}

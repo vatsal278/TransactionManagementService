@@ -50,7 +50,7 @@ func Test_transactionManagementServiceLogic_HealthCheck(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rec := NewTransactionManagementServiceLogic(tt.setup(), config.UtilSvc{})
+			rec := NewTransactionManagementServiceLogic(tt.setup(), config.ExternalSvc{})
 
 			got := rec.HealthCheck()
 
@@ -69,18 +69,18 @@ func TestTransactionManagementServiceLogic_GetTransactions(t *testing.T) {
 	tests := []struct {
 		name   string
 		userId string
-		setup  func() (datasource.DataSourceI, config.UtilSvc)
+		setup  func() (datasource.DataSourceI, config.ExternalSvc)
 		want   func(*respModel.Response)
 	}{
 		{
 			name:   "Success :: Get Transaction",
 			userId: "123",
-			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
 				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
 				mockDs.EXPECT().Get(map[string]interface{}{"user_id": "123"}, 5, 0).Times(1).Return(trans, 1, nil)
-				return mockDs, config.UtilSvc{}
+				return mockDs, config.ExternalSvc{}
 			},
 			want: func(resp *respModel.Response) {
 				var users = model.GetTransaction{AccountNumber: 1}
@@ -119,12 +119,12 @@ func TestTransactionManagementServiceLogic_GetTransactions(t *testing.T) {
 		{
 			name:   "Success :: Get Transaction:: count_offset>limit",
 			userId: "123",
-			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
 				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
 				mockDs.EXPECT().Get(map[string]interface{}{"user_id": "123"}, 5, 0).Times(1).Return(trans, 100, nil)
-				return mockDs, config.UtilSvc{}
+				return mockDs, config.ExternalSvc{}
 			},
 			want: func(resp *respModel.Response) {
 				var users = model.GetTransaction{AccountNumber: 1}
@@ -163,10 +163,10 @@ func TestTransactionManagementServiceLogic_GetTransactions(t *testing.T) {
 		{
 			name:   "Failure :: Get Transaction :: db err",
 			userId: "123",
-			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				mockDs.EXPECT().Get(map[string]interface{}{"user_id": "123"}, 5, 0).Times(1).Return(nil, 0, errors.New("error"))
-				return mockDs, config.UtilSvc{}
+				return mockDs, config.ExternalSvc{}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
@@ -198,7 +198,7 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 	tests := []struct {
 		name        string
 		credentials model.NewTransaction
-		setup       func() (datasource.DataSourceI, config.UtilSvc)
+		setup       func() (datasource.DataSourceI, config.ExternalSvc)
 		want        func(*respModel.Response)
 	}{
 		{
@@ -206,10 +206,10 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 			credentials: model.NewTransaction{
 				UserId: "123",
 			},
-			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				mockDs.EXPECT().Insert(gomock.Any()).Times(1).Return(nil)
-				return mockDs, config.UtilSvc{}
+				return mockDs, config.ExternalSvc{}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
@@ -228,7 +228,7 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 				UserId: "123",
 				Status: "approved",
 			},
-			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				router := mux.NewRouter()
 				router.HandleFunc("/microbank/v1/account/update/transaction", func(w http.ResponseWriter, r *http.Request) {
 					t.Log("123")
@@ -248,7 +248,7 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 				//}
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				mockDs.EXPECT().Insert(gomock.Any()).Times(1).Return(nil)
-				return mockDs, config.UtilSvc{AccSvcUrl: srv.URL}
+				return mockDs, config.ExternalSvc{AccSvcUrl: srv.URL}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
@@ -266,10 +266,10 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 			credentials: model.NewTransaction{
 				UserId: "123",
 			},
-			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				mockDs.EXPECT().Insert(gomock.Any()).Return(errors.New("error"))
-				return mockDs, config.UtilSvc{}
+				return mockDs, config.ExternalSvc{}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
@@ -300,17 +300,17 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 	tests := []struct {
 		name        string
 		credentials string
-		setup       func() (datasource.DataSourceI, config.UtilSvc)
+		setup       func() (datasource.DataSourceI, config.ExternalSvc)
 		want        func(*respModel.Response)
 	}{
 		{
 			name:        "Success :: DownloadPdf",
 			credentials: "123",
-			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
 				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
-				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 1, 0).Times(1).Return(trans, 1, nil)
+				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, nil)
 				router := mux.NewRouter()
 				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
 					response.ToJson(w, http.StatusOK, "Success", map[string]interface{}{"Name": "abc"})
@@ -318,7 +318,7 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
 				mockPdf.EXPECT().GeneratePdf(gomock.Any(), gomock.Any()).Return([]byte("PDF"), nil)
 				srv := httptest.NewServer(router)
-				return mockDs, config.UtilSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+				return mockDs, config.ExternalSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
@@ -340,13 +340,13 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 		{
 			name:        "Failure :: DownloadPdf :: error from db",
 			credentials: "123",
-			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
 				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
-				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 1, 0).Times(1).Return(trans, 1, errors.New("error db"))
+				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, errors.New("error db"))
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
-				return mockDs, config.UtilSvc{UserSvc: "", PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+				return mockDs, config.ExternalSvc{UserSvc: "", PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
@@ -368,12 +368,12 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 		{
 			name:        "Failure :: DownloadPdf :: no transaction found in db",
 			credentials: "123",
-			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
-				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 1, 0).Times(1).Return(trans, 1, nil)
+				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, nil)
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
-				return mockDs, config.UtilSvc{UserSvc: "", PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+				return mockDs, config.ExternalSvc{UserSvc: "", PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
@@ -395,13 +395,13 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 		{
 			name:        "Failure :: DownloadPdf :: error making request to user svc",
 			credentials: "123",
-			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
 				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
-				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 1, 0).Times(1).Return(trans, 1, nil)
+				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, nil)
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
-				return mockDs, config.UtilSvc{UserSvc: "", PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+				return mockDs, config.ExternalSvc{UserSvc: "", PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
@@ -421,20 +421,20 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 			},
 		},
 		{
-			name:        "Failure :: DownloadPdf ::",
+			name:        "Failure :: DownloadPdf ::not ok status code",
 			credentials: "123",
-			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
 				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
-				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 1, 0).Times(1).Return(trans, 1, nil)
+				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, nil)
 				router := mux.NewRouter()
 				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
 					response.ToJson(w, http.StatusBadRequest, "Success", map[string]interface{}{"Name": "abc"})
 				})
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
 				srv := httptest.NewServer(router)
-				return mockDs, config.UtilSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+				return mockDs, config.ExternalSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
@@ -456,18 +456,18 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 		{
 			name:        "Failure :: DownloadPdf :: error unmarshall response",
 			credentials: "123",
-			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
 				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
-				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 1, 0).Times(1).Return(trans, 1, nil)
+				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, nil)
 				router := mux.NewRouter()
 				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
 					json.NewEncoder(w).Encode(Reader(""))
 				})
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
 				srv := httptest.NewServer(router)
-				return mockDs, config.UtilSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+				return mockDs, config.ExternalSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
@@ -489,18 +489,18 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 		{
 			name:        "Failure :: DownloadPdf :: error assert response data",
 			credentials: "123",
-			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
 				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
-				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 1, 0).Times(1).Return(trans, 1, nil)
+				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, nil)
 				router := mux.NewRouter()
 				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
 					response.ToJson(w, http.StatusOK, "Success", Reader(""))
 				})
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
 				srv := httptest.NewServer(router)
-				return mockDs, config.UtilSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+				return mockDs, config.ExternalSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
@@ -522,11 +522,11 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 		{
 			name:        "Failure :: DownloadPdf :: error generate pdf",
 			credentials: "123",
-			setup: func() (datasource.DataSourceI, config.UtilSvc) {
+			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
 				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
-				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 1, 0).Times(1).Return(trans, 1, nil)
+				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, nil)
 				router := mux.NewRouter()
 				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
 					response.ToJson(w, http.StatusOK, "Success", map[string]interface{}{"Name": "abc"})
@@ -534,7 +534,7 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
 				mockPdf.EXPECT().GeneratePdf(gomock.Any(), gomock.Any()).Return([]byte("PDF"), errors.New("pdf generate error"))
 				srv := httptest.NewServer(router)
-				return mockDs, config.UtilSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+				return mockDs, config.ExternalSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{

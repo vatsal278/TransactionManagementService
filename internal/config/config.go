@@ -9,7 +9,6 @@ import (
 	"github.com/vatsal278/TransactionManagementService/internal/repo/authentication"
 	"github.com/vatsal278/go-redis-cache"
 	"github.com/vatsal278/html-pdf-service/pkg/sdk"
-	"log"
 	"os"
 	"time"
 )
@@ -34,11 +33,11 @@ type SvcConfig struct {
 	ServiceRouteVersion string
 	SvrCfg              config.ServerConfig
 	// add internal services after init
-	DbSvc       DbSvc
-	JwtSvc      JWTSvc
-	Cacher      CacherSvc
-	PdfSvc      PdfSvc
-	UtilService UtilSvc
+	DbSvc           DbSvc
+	JwtSvc          JWTSvc
+	Cacher          CacherSvc
+	PdfSvc          PdfSvc
+	ExternalService ExternalSvc
 }
 type DbSvc struct {
 	Db *sql.DB
@@ -75,7 +74,7 @@ type PdfSvc struct {
 	PdfService sdk.HtmlToPdfSvcI
 	UuId       string
 }
-type UtilSvc struct {
+type ExternalSvc struct {
 	AccSvcUrl string
 	PdfSvc    PdfSvc
 	UserSvc   string
@@ -121,7 +120,6 @@ func InitSvcConfig(cfg Config) *SvcConfig {
 	}
 	cfg.Cache.Time = duration
 	pdfSvcI := sdk.NewHtmlToPdfSvc(cfg.PdfServiceUrl)
-	log.Print(cfg.PdfServiceUrl)
 	file, err := os.ReadFile(cfg.HtmlTemplateFile)
 	if err != nil {
 		panic(err.Error())
@@ -133,7 +131,7 @@ func InitSvcConfig(cfg Config) *SvcConfig {
 		}
 		cfg.TemplateUuid = uuid
 	}
-	utilSvc := UtilSvc{
+	utilSvc := ExternalSvc{
 		AccSvcUrl: cfg.AccSvcUrl,
 		UserSvc:   cfg.UserSvcUrl,
 		PdfSvc:    PdfSvc{PdfService: pdfSvcI, UuId: cfg.TemplateUuid},
@@ -145,6 +143,6 @@ func InitSvcConfig(cfg Config) *SvcConfig {
 		DbSvc:               DbSvc{Db: dataBase},
 		JwtSvc:              JWTSvc{JwtSvc: jwtSvc},
 		Cacher:              CacherSvc{Cacher: cacher},
-		UtilService:         utilSvc,
+		ExternalService:     utilSvc,
 	}
 }

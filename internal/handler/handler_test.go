@@ -29,6 +29,12 @@ type Reader string
 func (Reader) Read(p []byte) (n int, err error) {
 	return 0, errors.New("test error")
 }
+
+type Writer string
+
+func (Writer) Write(p []byte) (n int, err error) {
+	return 0, errors.New("test error")
+}
 func Test_transactionManagementService_HealthCheck(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
@@ -107,7 +113,7 @@ func TestNewTransactionManagementService(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rec := NewTransactionManagementService(tt.setup(), config.UtilSvc{})
+			rec := NewTransactionManagementService(tt.setup(), config.ExternalSvc{})
 
 			_, _, stat := rec.HealthCheck()
 
@@ -502,7 +508,7 @@ func TestTransactionManagementService_DownloadTransaction(t *testing.T) {
 			name: "Success",
 			setup: func() (*transactionManagementService, *http.Request) {
 				mockLogic := mock.NewMockTransactionManagementServiceLogicIer(mockCtrl)
-				mockLogic.EXPECT().DownloadTransaction(gomock.Any(), "456").Times(1).Return(&respModel.Response{
+				mockLogic.EXPECT().DownloadTransaction("123", "456").Times(1).Return(&respModel.Response{
 					Status:  http.StatusOK,
 					Message: codes.GetErr(codes.Success),
 					Data:    []byte("PDF"),
@@ -510,7 +516,6 @@ func TestTransactionManagementService_DownloadTransaction(t *testing.T) {
 				svc := &transactionManagementService{
 					logic: mockLogic,
 				}
-
 				r := httptest.NewRequest("GET", "/transactions/download/:123", nil)
 				r = mux.SetURLVars(r, map[string]string{"transaction_id": "123"})
 				ctx := session.SetSession(r.Context(), model.SessionStruct{UserId: "1234", Cookie: "456"})
@@ -523,6 +528,45 @@ func TestTransactionManagementService_DownloadTransaction(t *testing.T) {
 				}
 				if strings.Compare("PDF", string(b)) != 0 {
 					t.Errorf("Want: %v, Got: %v", "PDF", string(b))
+					return
+				}
+				cd := rec.Header().Get("Content-Disposition")
+				if cd != "attachment; filename=123.pdf" {
+					t.Errorf("Want: %v, Got: %v", "attachment; filename=123.pdf", cd)
+					return
+				}
+				ct := rec.Header().Get("Content-Type")
+				if ct != "application/pdf" {
+					t.Errorf("Want: %v, Got: %v", "application/pdf", cd)
+					return
+				}
+			},
+		},
+		{
+			name: "Failure:: DownloadTransaction :: id not found in url",
+			setup: func() (*transactionManagementService, *http.Request) {
+				mockLogic := mock.NewMockTransactionManagementServiceLogicIer(mockCtrl)
+				svc := &transactionManagementService{
+					logic: mockLogic,
+				}
+				r := httptest.NewRequest("GET", "/transactions/download/:123", nil)
+				ctx := session.SetSession(r.Context(), model.SessionStruct{UserId: "1234", Cookie: "456"})
+				return svc, r.WithContext(ctx)
+			},
+			want: func(rec httptest.ResponseRecorder) {
+				b, err := ioutil.ReadAll(rec.Body)
+				if err != nil {
+					return
+				}
+				var response respModel.Response
+				err = json.Unmarshal(b, &response)
+				tempResp := &respModel.Response{
+					Status:  http.StatusBadRequest,
+					Message: codes.GetErr(codes.ErrGetTransaction),
+					Data:    nil,
+				}
+				if !reflect.DeepEqual(&response, tempResp) {
+					t.Errorf("Want: %v, Got: %v", tempResp, &response)
 				}
 			},
 		},
@@ -558,7 +602,7 @@ func TestTransactionManagementService_DownloadTransaction(t *testing.T) {
 			name: "Failure:: DownloadTransaction :: not ok status code",
 			setup: func() (*transactionManagementService, *http.Request) {
 				mockLogic := mock.NewMockTransactionManagementServiceLogicIer(mockCtrl)
-				mockLogic.EXPECT().DownloadTransaction(gomock.Any(), gomock.Any()).Return(&respModel.Response{
+				mockLogic.EXPECT().DownloadTransaction("123", "4321").Return(&respModel.Response{
 					Status:  http.StatusBadRequest,
 					Message: "",
 					Data:    nil,
