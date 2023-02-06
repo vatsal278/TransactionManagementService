@@ -505,7 +505,7 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
 					Status:  http.StatusInternalServerError,
-					Message: "error assert response data",
+					Message: codes.GetErr(codes.ErrAssertResp),
 					Data:    nil,
 				}
 				if !reflect.DeepEqual(resp.Status, temp.Status) {
@@ -520,7 +520,7 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 			},
 		},
 		{
-			name:        "Success :: DownloadPdf",
+			name:        "Failure :: DownloadPdf :: error generate pdf",
 			credentials: "123",
 			setup: func() (datasource.DataSourceI, config.UtilSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
