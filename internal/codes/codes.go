@@ -7,7 +7,7 @@ import (
 type errCode int
 
 const (
-	ErrUnauthorized errCode = iota + 1000
+	ErrUnauthorized errCode = iota + 3000
 	ErrTokenExpired
 	ErrAssertClaims
 	ErrMatchingToken

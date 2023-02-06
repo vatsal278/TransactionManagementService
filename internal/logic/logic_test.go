@@ -1,18 +1,19 @@
 package logic
 
 import (
+	"encoding/json"
 	"errors"
 	respModel "github.com/PereRohit/util/model"
-	"github.com/PereRohit/util/response"
 	"github.com/PereRohit/util/testutil"
 	"github.com/golang/mock/gomock"
-	"github.com/gorilla/mux"
 	"github.com/vatsal278/TransactionManagementService/internal/codes"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/vatsal278/TransactionManagementService/internal/repo/datasource"
 	"github.com/vatsal278/TransactionManagementService/pkg/mock"
@@ -206,7 +207,19 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 			},
 			setup: func() (datasource.DataSourceI, string) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
-				mockDs.EXPECT().Insert(gomock.Any()).Times(1).Return(nil)
+				mockDs.EXPECT().Insert(gomock.Any()).Times(1).DoAndReturn(func(tr model.Transaction) error {
+					tr.TransactionId = ""
+					tr.CreatedAt = time.Time{}
+					diff := testutil.Diff(tr, model.Transaction{
+						UserId:        "123",
+						AccountNumber: 0,
+						Amount:        0,
+					})
+					if diff != "" {
+						t.Error(testutil.Callers(), diff)
+					}
+					return nil
+				})
 				return mockDs, ""
 			},
 			want: func(resp *respModel.Response) {
@@ -224,28 +237,39 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 			name: "Success::transaction status = approved",
 			credentials: model.NewTransaction{
 				UserId: "123",
+				Type:   "debit",
 				Status: "approved",
+				Amount: 1000,
 			},
 			setup: func() (datasource.DataSourceI, string) {
-				router := mux.NewRouter()
-				router.HandleFunc("/microbank/v1/account/update/transaction", func(w http.ResponseWriter, r *http.Request) {
-					t.Log("123")
-					response.ToJson(w, http.StatusBadRequest, "Success", map[string]interface{}{"id": "123"})
-				})
-				srv := httptest.NewServer(router)
-				//req, err := http.NewRequest("PUT", srv.URL+"/microbank/v1/account/update/transaction", nil)
-				//if err != nil {
-				//	t.Log(err)
-				//	t.Fail()
-				//}
-				//client := http.Client{Timeout: 3 * time.Second}
-				//_, err = client.Do(req)
-				//if err != nil {
-				//	t.Log(err)
-				//
-				//}
+				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					t.Log("Hit")
+					if r.Method != "PUT" {
+						t.Errorf("Expected method 'PUT', got '%s'", r.Method)
+						t.Fail()
+						return
+					}
+					if r.URL.Path != "/microbank/v1/account/update/transaction" {
+						t.Errorf("Expected URL '/microbank/v1/account/update/transaction', got '%s'", r.URL.Path)
+						t.Fail()
+						return
+					}
+					expectedReqBody, _ := json.Marshal(model.UpdateTransaction{
+						AccountNumber:   0,
+						Amount:          1000,
+						TransactionType: "debit",
+					})
+					reqBody, _ := ioutil.ReadAll(r.Body)
+					if string(reqBody) != string(expectedReqBody) {
+						t.Errorf("Expected request body '%s', got '%s'", expectedReqBody, reqBody)
+						t.Fail()
+						return
+					}
+					w.WriteHeader(http.StatusOK)
+				}))
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				mockDs.EXPECT().Insert(gomock.Any()).Times(1).Return(nil)
+
 				return mockDs, srv.URL
 			},
 			want: func(resp *respModel.Response) {
@@ -284,7 +308,7 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := NewTransactionManagementServiceLogic(tt.setup())
-
+			time.Sleep(2 * time.Second)
 			got := rec.NewTransaction(tt.credentials)
 
 			tt.want(got)

@@ -101,20 +101,20 @@ func (l transactionManagementServiceLogic) NewTransaction(newTransaction model.N
 			Data:    nil,
 		}
 	}
-	log.Info(l.AccSvc)
 	go func(reqBody []byte) {
 		req, err := http.NewRequest("PUT", l.AccSvc+"/microbank/v1/account/update/transaction", bytes.NewReader(reqBody))
 		if err != nil {
 			log.Error(err)
 			return
 		}
-		client := http.Client{Timeout: 3 * time.Second}
+		client := http.Client{Timeout: 5 * time.Second}
 		_, err = client.Do(req)
 		if err != nil {
 			log.Error(err)
 			return
 		}
 	}(by)
+	time.Sleep(5 * time.Second)
 	return &respModel.Response{
 		Status:  http.StatusCreated,
 		Message: "SUCCESS",
