@@ -247,7 +247,7 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				mockDs.EXPECT().Insert(gomock.Any()).Times(1).Return(nil)
 
-				return mockDs, config.ExternalSvc{UserSvc: tStruct.srv.URL}
+				return mockDs, config.ExternalSvc{AccSvcUrl: tStruct.srv.URL}
 			},
 			want: func(resp *respModel.Response) {
 				tStruct.wg.Wait()
