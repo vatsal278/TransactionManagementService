@@ -84,36 +84,19 @@ func TestTransactionManagementServiceLogic_GetTransactions(t *testing.T) {
 				return mockDs, ""
 			},
 			want: func(resp *respModel.Response) {
-				var users = model.Transaction{AccountNumber: 1}
-				temp := respModel.Response{
-					Status:  http.StatusOK,
-					Message: "SUCCESS",
-					Data:    users,
-				}
+				var paginatedResponse = model.PaginatedResponse{Response: []model.Transaction{{AccountNumber: 1, UserId: "123"}}, Pagination: model.Paginate{
+					CurrentPage: 1,
+					NextPage:    -1,
+					TotalPage:   1,
+				}}
 				res, ok := resp.Data.(model.PaginatedResponse)
 				if !ok {
 					t.Log("fail")
 					t.Fail()
 				}
-				if !reflect.DeepEqual(&resp.Status, &temp.Status) {
-					t.Errorf("Want: %v, Got: %v", &temp.Status, &resp.Status)
-				}
-				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
-					t.Errorf("Want: %v, Got: %v", &temp.Message, &resp.Message)
-				}
-				if !reflect.DeepEqual(res.Response[0].AccountNumber, 1) {
-					t.Errorf("Want: %v, Got: %v", 1, res.Response[0].AccountNumber)
-				}
-				if !reflect.DeepEqual(res.Pagination, model.Paginate{
-					CurrentPage: 1,
-					NextPage:    -1,
-					TotalPage:   1,
-				}) {
-					t.Errorf("Want: %v, Got: %v", model.Paginate{
-						CurrentPage: 1,
-						NextPage:    -1,
-						TotalPage:   1,
-					}, res.Pagination)
+				if !reflect.DeepEqual(&res, &paginatedResponse) {
+					t.Errorf("Want: %v, Got: %v", &paginatedResponse, &res)
+					return
 				}
 			},
 		},
@@ -128,36 +111,19 @@ func TestTransactionManagementServiceLogic_GetTransactions(t *testing.T) {
 				return mockDs, ""
 			},
 			want: func(resp *respModel.Response) {
-				var users = model.Transaction{AccountNumber: 1}
-				temp := respModel.Response{
-					Status:  http.StatusOK,
-					Message: "SUCCESS",
-					Data:    users,
-				}
+				var paginatedResponse = model.PaginatedResponse{Response: []model.Transaction{{AccountNumber: 1, UserId: "123"}}, Pagination: model.Paginate{
+					CurrentPage: 1,
+					NextPage:    2,
+					TotalPage:   20,
+				}}
 				res, ok := resp.Data.(model.PaginatedResponse)
 				if !ok {
 					t.Log("fail")
 					t.Fail()
 				}
-				if !reflect.DeepEqual(&resp.Status, &temp.Status) {
-					t.Errorf("Want: %v, Got: %v", &temp.Status, &resp.Status)
-				}
-				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
-					t.Errorf("Want: %v, Got: %v", &temp.Message, &resp.Message)
-				}
-				if !reflect.DeepEqual(res.Response[0].AccountNumber, 1) {
-					t.Errorf("Want: %v, Got: %v", 1, res.Response[0].AccountNumber)
-				}
-				if !reflect.DeepEqual(res.Pagination, model.Paginate{
-					CurrentPage: 1,
-					NextPage:    2,
-					TotalPage:   20,
-				}) {
-					t.Errorf("Want: %v, Got: %v", model.Paginate{
-						CurrentPage: 1,
-						NextPage:    -1,
-						TotalPage:   1,
-					}, res.Pagination)
+				if !reflect.DeepEqual(&res, &paginatedResponse) {
+					t.Errorf("Want: %v, Got: %v", &paginatedResponse, &res)
+					return
 				}
 			},
 		},

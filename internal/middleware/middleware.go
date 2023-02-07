@@ -55,7 +55,6 @@ func (u TransactionMgmtMiddleware) ExtractUser(next http.Handler) http.Handler {
 			return
 		}
 		if cookie.Value == "" {
-			log.Error(err)
 			response.ToJson(w, http.StatusUnauthorized, codes.GetErr(codes.ErrUnauthorized), nil)
 			return
 		}
@@ -114,7 +113,7 @@ func (t TransactionMgmtMiddleware) Cacher(requireAuth bool) func(http.Handler) h
 			if err == nil {
 				err = json.Unmarshal(by, &cacheResponse)
 				if err != nil {
-					log.Error(err)
+					log.Error(codes.GetErr(codes.ErrGetTransaction))
 					return
 				}
 				w.Header().Set("Content-Type", cacheResponse.ContentType)
@@ -137,10 +136,9 @@ func (t TransactionMgmtMiddleware) Cacher(requireAuth bool) func(http.Handler) h
 				log.Error(err)
 				return
 			}
-			log.Info(string(byt))
 			err = Cacher.Set(key, byt, t.cfg.Cache.Time)
 			if err != nil {
-				log.Error(err)
+				log.Error(codes.GetErr(codes.ErrGetTransaction))
 				return
 			}
 		})

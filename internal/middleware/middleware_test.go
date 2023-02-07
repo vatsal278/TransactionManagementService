@@ -14,7 +14,6 @@ import (
 	"github.com/vatsal278/TransactionManagementService/pkg/mock"
 	"github.com/vatsal278/TransactionManagementService/pkg/session"
 	redisMock "github.com/vatsal278/go-redis-cache/mocks"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -409,11 +408,10 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	tests := []struct {
-		name           string
-		config         config.Config
-		extractMsgFunc func(closer io.ReadCloser) (string, error)
-		setupFunc      func() (*http.Request, *redisMock.MockCacher)
-		validator      func(*httptest.ResponseRecorder, *bool)
+		name      string
+		config    config.Config
+		setupFunc func() (*http.Request, *redisMock.MockCacher)
+		validator func(*httptest.ResponseRecorder, *bool)
 	}{
 		{
 			name:   "SUCCESS::Cacher::Cached Response",
@@ -428,9 +426,6 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 				mockCacher.EXPECT().Get("http://localhost:80/auth/123").Return(b, nil)
 				return req.WithContext(ctx), mockCacher
 			},
-			extractMsgFunc: func(closer io.ReadCloser) (string, error) {
-				return "", nil
-			},
 			validator: func(res *httptest.ResponseRecorder, hit *bool) {
 				if *hit != false {
 					t.Errorf("Want: %v, Got: %v", false, hit)
@@ -439,6 +434,9 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 				by, _ := ioutil.ReadAll(res.Body)
 				if !reflect.DeepEqual([]byte("ok"), by) {
 					t.Errorf("Want: %v, Got: %v", "ok", string(by))
+				}
+				if !reflect.DeepEqual("application/json", res.Header().Get("Content-Type")) {
+					t.Errorf("Want: %v, Got: %v", "application/json", res.Header().Get("Content-Type"))
 				}
 			},
 		},
@@ -451,9 +449,6 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 				ctx := session.SetSession(req.Context(), 1)
 				mockCacher := redisMock.NewMockCacher(mockCtrl)
 				return req.WithContext(ctx), mockCacher
-			},
-			extractMsgFunc: func(closer io.ReadCloser) (string, error) {
-				return "", nil
 			},
 			validator: func(res *httptest.ResponseRecorder, hit *bool) {
 				by, _ := ioutil.ReadAll(res.Body)
@@ -484,9 +479,6 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 				mockCacher.EXPECT().Get("http://localhost:80/auth/123").Return([]byte("123"), nil)
 				return req.WithContext(ctx), mockCacher
 			},
-			extractMsgFunc: func(closer io.ReadCloser) (string, error) {
-				return "", nil
-			},
 			validator: func(res *httptest.ResponseRecorder, hit *bool) {
 				if *hit != false {
 					t.Errorf("Want: %v, Got: %v", false, hit)
@@ -506,15 +498,9 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 				req := httptest.NewRequest(http.MethodGet, "http://localhost:80", nil)
 				ctx := session.SetSession(req.Context(), model2.SessionStruct{UserId: "123"})
 				mockCacher := redisMock.NewMockCacher(mockCtrl)
-				//x := model.Response{Status: 200, Message: "passed", Data: "123"}
-				//y, _ := json.Marshal(x)
-				//cacheResponse := model2.CacheResponse{Status: http.StatusOK, Response: string(y), ContentType: "application/json"}
 				mockCacher.EXPECT().Get("http://localhost:80/auth/123").Return(nil, errors.New("error"))
 				mockCacher.EXPECT().Set("http://localhost:80/auth/123", []byte("{\"Status\":200,\"Response\":\"{\\\"status\\\":200,\\\"message\\\":\\\"passed\\\",\\\"data\\\":\\\"123\\\"}\\n\",\"ContentType\":\"application/json\"}"), time.Minute)
 				return req.WithContext(ctx), mockCacher
-			},
-			extractMsgFunc: func(closer io.ReadCloser) (string, error) {
-				return "", nil
 			},
 			validator: func(res *httptest.ResponseRecorder, hit *bool) {
 				if *hit != true {
@@ -527,6 +513,9 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 				expectedResp := model.Response{Status: 200, Message: "passed", Data: "123"}
 				if !reflect.DeepEqual(expectedResp, resp) {
 					t.Errorf("Want: %v, Got: %v", expectedResp, resp)
+				}
+				if !reflect.DeepEqual("application/json", res.Header().Get("Content-Type")) {
+					t.Errorf("Want: %v, Got: %v", "application/json", res.Header().Get("Content-Type"))
 				}
 			},
 		},
@@ -541,9 +530,6 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 				mockCacher.EXPECT().Get("http://localhost:80/auth/123").Return(nil, errors.New("error"))
 				mockCacher.EXPECT().Set("http://localhost:80/auth/123", []byte("{\"Status\":200,\"Response\":\"{\\\"status\\\":200,\\\"message\\\":\\\"passed\\\",\\\"data\\\":\\\"123\\\"}\\n\",\"ContentType\":\"application/json\"}"), time.Minute).Return(errors.New("error"))
 				return req.WithContext(ctx), mockCacher
-			},
-			extractMsgFunc: func(closer io.ReadCloser) (string, error) {
-				return "", nil
 			},
 			validator: func(res *httptest.ResponseRecorder, hit *bool) {
 				if *hit != true {
