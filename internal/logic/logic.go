@@ -73,14 +73,13 @@ func (l transactionManagementServiceLogic) NewTransaction(newTransaction model.N
 		TransactionId: uuid.NewString(),
 		Amount:        newTransaction.Amount,
 		TransferTo:    newTransaction.TransferTo,
-		CreatedAt:     time.Now(),
 		Status:        newTransaction.Status,
 		Type:          newTransaction.Type,
 		Comment:       newTransaction.Comment,
 	}
 	err := l.DsSvc.Insert(transaction)
 	if err != nil {
-		log.Error(codes.GetErr(codes.ErrNewTransaction))
+		log.Error(err)
 		return &respModel.Response{
 			Status:  http.StatusInternalServerError,
 			Message: codes.GetErr(codes.ErrNewTransaction),
@@ -117,6 +116,7 @@ func (l transactionManagementServiceLogic) NewTransaction(newTransaction model.N
 			return
 		}
 	}(by)
+
 	return &respModel.Response{
 		Status:  http.StatusCreated,
 		Message: "SUCCESS",

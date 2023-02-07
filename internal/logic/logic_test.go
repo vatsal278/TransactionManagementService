@@ -14,10 +14,13 @@ import (
 	"github.com/vatsal278/TransactionManagementService/internal/repo/datasource"
 	"github.com/vatsal278/TransactionManagementService/pkg/mock"
 	pdfMock "github.com/vatsal278/html-pdf-service/pkg/mock"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"sync"
 	"testing"
+	"time"
 )
 
 type Reader string
@@ -83,36 +86,19 @@ func TestTransactionManagementServiceLogic_GetTransactions(t *testing.T) {
 				return mockDs, config.ExternalSvc{}
 			},
 			want: func(resp *respModel.Response) {
-				var users = model.GetTransaction{AccountNumber: 1}
-				temp := respModel.Response{
-					Status:  http.StatusOK,
-					Message: "SUCCESS",
-					Data:    users,
-				}
+				var paginatedResponse = model.PaginatedResponse{Response: []model.Transaction{{AccountNumber: 1, UserId: "123"}}, Pagination: model.Paginate{
+					CurrentPage: 1,
+					NextPage:    -1,
+					TotalPage:   1,
+				}}
 				res, ok := resp.Data.(model.PaginatedResponse)
 				if !ok {
 					t.Log("fail")
 					t.Fail()
 				}
-				if !reflect.DeepEqual(&resp.Status, &temp.Status) {
-					t.Errorf("Want: %v, Got: %v", &temp.Status, &resp.Status)
-				}
-				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
-					t.Errorf("Want: %v, Got: %v", &temp.Message, &resp.Message)
-				}
-				if !reflect.DeepEqual(res.Response[0].AccountNumber, 1) {
-					t.Errorf("Want: %v, Got: %v", 1, res.Response[0].AccountNumber)
-				}
-				if !reflect.DeepEqual(res.Pagination, model.Paginate{
-					CurrentPage: 1,
-					NextPage:    -1,
-					TotalPage:   1,
-				}) {
-					t.Errorf("Want: %v, Got: %v", model.Paginate{
-						CurrentPage: 1,
-						NextPage:    -1,
-						TotalPage:   1,
-					}, res.Pagination)
+				if !reflect.DeepEqual(&res, &paginatedResponse) {
+					t.Errorf("Want: %v, Got: %v", &paginatedResponse, &res)
+					return
 				}
 			},
 		},
@@ -127,36 +113,19 @@ func TestTransactionManagementServiceLogic_GetTransactions(t *testing.T) {
 				return mockDs, config.ExternalSvc{}
 			},
 			want: func(resp *respModel.Response) {
-				var users = model.GetTransaction{AccountNumber: 1}
-				temp := respModel.Response{
-					Status:  http.StatusOK,
-					Message: "SUCCESS",
-					Data:    users,
-				}
+				var paginatedResponse = model.PaginatedResponse{Response: []model.Transaction{{AccountNumber: 1, UserId: "123"}}, Pagination: model.Paginate{
+					CurrentPage: 1,
+					NextPage:    2,
+					TotalPage:   20,
+				}}
 				res, ok := resp.Data.(model.PaginatedResponse)
 				if !ok {
 					t.Log("fail")
 					t.Fail()
 				}
-				if !reflect.DeepEqual(&resp.Status, &temp.Status) {
-					t.Errorf("Want: %v, Got: %v", &temp.Status, &resp.Status)
-				}
-				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
-					t.Errorf("Want: %v, Got: %v", &temp.Message, &resp.Message)
-				}
-				if !reflect.DeepEqual(res.Response[0].AccountNumber, 1) {
-					t.Errorf("Want: %v, Got: %v", 1, res.Response[0].AccountNumber)
-				}
-				if !reflect.DeepEqual(res.Pagination, model.Paginate{
-					CurrentPage: 1,
-					NextPage:    2,
-					TotalPage:   20,
-				}) {
-					t.Errorf("Want: %v, Got: %v", model.Paginate{
-						CurrentPage: 1,
-						NextPage:    -1,
-						TotalPage:   1,
-					}, res.Pagination)
+				if !reflect.DeepEqual(&res, &paginatedResponse) {
+					t.Errorf("Want: %v, Got: %v", &paginatedResponse, &res)
+					return
 				}
 			},
 		},
@@ -191,10 +160,40 @@ func TestTransactionManagementServiceLogic_GetTransactions(t *testing.T) {
 	}
 }
 
+type TestServer struct {
+	srv *httptest.Server
+	t   *testing.T
+	wg  *sync.WaitGroup
+}
+
+func testClient(c *TestServer) {
+	router := mux.NewRouter()
+	router.HandleFunc("/microbank/v1/account/update/transaction", func(w http.ResponseWriter, r *http.Request) {
+		defer c.wg.Done()
+		defer c.t.Log("Hit")
+		expectedReqBody, _ := json.Marshal(model.UpdateTransaction{
+			AccountNumber:   0,
+			Amount:          1000,
+			TransactionType: "debit",
+		})
+		reqBody, _ := ioutil.ReadAll(r.Body)
+		if string(reqBody) != string(expectedReqBody) {
+			c.t.Errorf("Expected request body '%s', got '%s'", expectedReqBody, reqBody)
+			c.t.Fail()
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}).Methods(http.MethodPut)
+	c.srv = httptest.NewServer(router)
+}
+
 func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-
+	tStruct := &TestServer{
+		t:  t,
+		wg: &sync.WaitGroup{},
+	}
 	tests := []struct {
 		name        string
 		credentials model.NewTransaction
@@ -208,7 +207,19 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 			},
 			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
-				mockDs.EXPECT().Insert(gomock.Any()).Times(1).Return(nil)
+				mockDs.EXPECT().Insert(gomock.Any()).Times(1).DoAndReturn(func(tr model.Transaction) error {
+					tr.TransactionId = ""
+					tr.CreatedAt = time.Time{}
+					diff := testutil.Diff(tr, model.Transaction{
+						UserId:        "123",
+						AccountNumber: 0,
+						Amount:        0,
+					})
+					if diff != "" {
+						t.Error(testutil.Callers(), diff)
+					}
+					return nil
+				})
 				return mockDs, config.ExternalSvc{}
 			},
 			want: func(resp *respModel.Response) {
@@ -226,31 +237,21 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 			name: "Success::transaction status = approved",
 			credentials: model.NewTransaction{
 				UserId: "123",
+				Type:   "debit",
 				Status: "approved",
+				Amount: 1000,
 			},
 			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
-				router := mux.NewRouter()
-				router.HandleFunc("/microbank/v1/account/update/transaction", func(w http.ResponseWriter, r *http.Request) {
-					t.Log("123")
-					response.ToJson(w, http.StatusBadRequest, "Success", map[string]interface{}{"id": "123"})
-				})
-				srv := httptest.NewServer(router)
-				//req, err := http.NewRequest("PUT", srv.URL+"/microbank/v1/account/update/transaction", nil)
-				//if err != nil {
-				//	t.Log(err)
-				//	t.Fail()
-				//}
-				//client := http.Client{Timeout: 3 * time.Second}
-				//_, err = client.Do(req)
-				//if err != nil {
-				//	t.Log(err)
-				//
-				//}
+				tStruct.wg.Add(1)
+				testClient(tStruct)
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				mockDs.EXPECT().Insert(gomock.Any()).Times(1).Return(nil)
-				return mockDs, config.ExternalSvc{AccSvcUrl: srv.URL}
+
+				return mockDs, config.ExternalSvc{UserSvc: tStruct.srv.URL}
 			},
 			want: func(resp *respModel.Response) {
+				tStruct.wg.Wait()
+				tStruct.srv.Close()
 				temp := respModel.Response{
 					Status:  http.StatusCreated,
 					Message: "SUCCESS",
@@ -293,30 +294,51 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 		})
 	}
 }
+
 func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
 	tests := []struct {
-		name        string
-		credentials string
-		setup       func() (datasource.DataSourceI, config.ExternalSvc)
-		want        func(*respModel.Response)
+		name          string
+		transactionId string
+		setup         func() (datasource.DataSourceI, config.ExternalSvc)
+		want          func(*respModel.Response)
 	}{
 		{
-			name:        "Success :: DownloadPdf",
-			credentials: "123",
+			name:          "Success :: DownloadPdf",
+			transactionId: "123",
 			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
-				var trans []model.Transaction
-				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
-				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, nil)
+				var transactions []model.Transaction
+				transactions = append(transactions, model.Transaction{UserId: "123", AccountNumber: 1})
+				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(transactions, 1, nil)
 				router := mux.NewRouter()
 				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
+					val, err := r.Cookie("token")
+					if err != nil {
+						t.Errorf("Want: %v, Got: %v", "", err)
+						return
+					}
+					if val.Value != "123" {
+						t.Errorf("Want: %v, Got: %v", "", val.Value)
+						return
+					}
 					response.ToJson(w, http.StatusOK, "Success", map[string]interface{}{"Name": "abc"})
 				})
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
-				mockPdf.EXPECT().GeneratePdf(gomock.Any(), gomock.Any()).Return([]byte("PDF"), nil)
+
+				mockPdf.EXPECT().GeneratePdf(map[string]interface{}{
+					"Name":                      "abc",
+					"TransferFromAccountNumber": transactions[0].AccountNumber,
+					"TransferToAccountNumber":   transactions[0].TransferTo,
+					"TransactionId":             transactions[0].TransactionId,
+					"Amount":                    transactions[0].Amount,
+					"Date":                      transactions[0].CreatedAt,
+					"Status":                    transactions[0].Status,
+					"Type":                      transactions[0].Type,
+					"Comment":                   transactions[0].Comment,
+				}, "11-22-33-44").Return([]byte("PDF"), nil)
 				srv := httptest.NewServer(router)
 				return mockDs, config.ExternalSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},
@@ -326,20 +348,14 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 					Message: "SUCCESS",
 					Data:    []byte("PDF"),
 				}
-				if !reflect.DeepEqual(resp.Status, temp.Status) {
-					t.Errorf("Want: %v, Got: %v", temp.Status, resp.Status)
-				}
-				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
-					t.Errorf("Want: %v, Got: %v", temp.Message, resp.Message)
-				}
-				if !reflect.DeepEqual(&resp.Data, &temp.Data) {
-					t.Errorf("Want: %v, Got: %v", temp.Data, resp.Data)
+				if !reflect.DeepEqual(resp, &temp) {
+					t.Errorf("Want: %v, Got: %v", &temp, resp)
 				}
 			},
 		},
 		{
-			name:        "Failure :: DownloadPdf :: error from db",
-			credentials: "123",
+			name:          "Failure :: DownloadPdf :: error from db",
+			transactionId: "123",
 			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
@@ -354,20 +370,14 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 					Message: codes.GetErr(codes.ErrGetTransaction),
 					Data:    nil,
 				}
-				if !reflect.DeepEqual(resp.Status, temp.Status) {
-					t.Errorf("Want: %v, Got: %v", temp.Status, resp.Status)
-				}
-				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
-					t.Errorf("Want: %v, Got: %v", temp.Message, resp.Message)
-				}
-				if !reflect.DeepEqual(&resp.Data, &temp.Data) {
-					t.Errorf("Want: %v, Got: %v", temp.Data, resp.Data)
+				if !reflect.DeepEqual(resp, &temp) {
+					t.Errorf("Want: %v, Got: %v", &temp, resp)
 				}
 			},
 		},
 		{
-			name:        "Failure :: DownloadPdf :: no transaction found in db",
-			credentials: "123",
+			name:          "Failure :: DownloadPdf :: no transaction found in db",
+			transactionId: "123",
 			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
@@ -381,20 +391,14 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 					Message: codes.GetErr(codes.ErrGetTransaction),
 					Data:    nil,
 				}
-				if !reflect.DeepEqual(resp.Status, temp.Status) {
-					t.Errorf("Want: %v, Got: %v", temp.Status, resp.Status)
-				}
-				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
-					t.Errorf("Want: %v, Got: %v", temp.Message, resp.Message)
-				}
-				if !reflect.DeepEqual(&resp.Data, &temp.Data) {
-					t.Errorf("Want: %v, Got: %v", temp.Data, resp.Data)
+				if !reflect.DeepEqual(resp, &temp) {
+					t.Errorf("Want: %v, Got: %v", temp, &resp)
 				}
 			},
 		},
 		{
-			name:        "Failure :: DownloadPdf :: error making request to user svc",
-			credentials: "123",
+			name:          "Failure :: DownloadPdf :: error making request to user svc",
+			transactionId: "123",
 			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
@@ -409,20 +413,14 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 					Message: codes.GetErr(codes.ErrFetchinDataUserSvc),
 					Data:    nil,
 				}
-				if !reflect.DeepEqual(resp.Status, temp.Status) {
-					t.Errorf("Want: %v, Got: %v", temp.Status, resp.Status)
-				}
-				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
-					t.Errorf("Want: %v, Got: %v", temp.Message, resp.Message)
-				}
-				if !reflect.DeepEqual(&resp.Data, &temp.Data) {
-					t.Errorf("Want: %v, Got: %v", temp.Data, resp.Data)
+				if !reflect.DeepEqual(resp, &temp) {
+					t.Errorf("Want: %v, Got: %v", temp, &resp)
 				}
 			},
 		},
 		{
-			name:        "Failure :: DownloadPdf ::not ok status code",
-			credentials: "123",
+			name:          "Failure :: DownloadPdf ::not ok status code",
+			transactionId: "123",
 			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
@@ -442,20 +440,14 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 					Message: codes.GetErr(codes.ErrFetchinDataUserSvc),
 					Data:    nil,
 				}
-				if !reflect.DeepEqual(resp.Status, temp.Status) {
-					t.Errorf("Want: %v, Got: %v", temp.Status, resp.Status)
-				}
-				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
-					t.Errorf("Want: %v, Got: %v", temp.Message, resp.Message)
-				}
-				if !reflect.DeepEqual(&resp.Data, &temp.Data) {
-					t.Errorf("Want: %v, Got: %v", temp.Data, resp.Data)
+				if !reflect.DeepEqual(resp, &temp) {
+					t.Errorf("Want: %v, Got: %v", temp, &resp)
 				}
 			},
 		},
 		{
-			name:        "Failure :: DownloadPdf :: error unmarshall response",
-			credentials: "123",
+			name:          "Failure :: DownloadPdf :: error unmarshall response",
+			transactionId: "123",
 			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
@@ -475,20 +467,14 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 					Message: codes.GetErr(codes.ErrUnmarshall),
 					Data:    nil,
 				}
-				if !reflect.DeepEqual(resp.Status, temp.Status) {
-					t.Errorf("Want: %v, Got: %v", temp.Status, resp.Status)
-				}
-				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
-					t.Errorf("Want: %v, Got: %v", temp.Message, resp.Message)
-				}
-				if !reflect.DeepEqual(&resp.Data, &temp.Data) {
-					t.Errorf("Want: %v, Got: %v", temp.Data, resp.Data)
+				if !reflect.DeepEqual(resp, &temp) {
+					t.Errorf("Want: %v, Got: %v", temp, &resp)
 				}
 			},
 		},
 		{
-			name:        "Failure :: DownloadPdf :: error assert response data",
-			credentials: "123",
+			name:          "Failure :: DownloadPdf :: error assert response data",
+			transactionId: "123",
 			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
@@ -508,20 +494,14 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 					Message: codes.GetErr(codes.ErrAssertResp),
 					Data:    nil,
 				}
-				if !reflect.DeepEqual(resp.Status, temp.Status) {
-					t.Errorf("Want: %v, Got: %v", temp.Status, resp.Status)
-				}
-				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
-					t.Errorf("Want: %v, Got: %v", temp.Message, resp.Message)
-				}
-				if !reflect.DeepEqual(&resp.Data, &temp.Data) {
-					t.Errorf("Want: %v, Got: %v", temp.Data, resp.Data)
+				if !reflect.DeepEqual(resp, &temp) {
+					t.Errorf("Want: %v, Got: %v", temp, &resp)
 				}
 			},
 		},
 		{
-			name:        "Failure :: DownloadPdf :: error generate pdf",
-			credentials: "123",
+			name:          "Failure :: DownloadPdf :: error generate pdf",
+			transactionId: "123",
 			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				var trans []model.Transaction
@@ -542,14 +522,8 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 					Message: codes.GetErr(codes.ErrPdf),
 					Data:    nil,
 				}
-				if !reflect.DeepEqual(resp.Status, temp.Status) {
-					t.Errorf("Want: %v, Got: %v", temp.Status, resp.Status)
-				}
-				if !reflect.DeepEqual(&resp.Message, &temp.Message) {
-					t.Errorf("Want: %v, Got: %v", temp.Message, resp.Message)
-				}
-				if !reflect.DeepEqual(&resp.Data, &temp.Data) {
-					t.Errorf("Want: %v, Got: %v", temp.Data, resp.Data)
+				if !reflect.DeepEqual(resp, &temp) {
+					t.Errorf("Want: %v, Got: %v", temp, &resp)
 				}
 			},
 		},
@@ -558,7 +532,7 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := NewTransactionManagementServiceLogic(tt.setup())
 
-			got := rec.DownloadTransaction(tt.credentials, "123")
+			got := rec.DownloadTransaction(tt.transactionId, "123")
 
 			tt.want(got)
 		})
