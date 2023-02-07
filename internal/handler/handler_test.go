@@ -131,20 +131,11 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 
 	tests := []struct {
 		name  string
-		model model.Transaction
 		setup func() (*transactionManagementService, *http.Request)
 		want  func(recorder httptest.ResponseRecorder)
 	}{
 		{
 			name: "Success",
-			model: model.Transaction{
-				AccountNumber: 1,
-				Amount:        1000,
-				TransferTo:    2,
-				Status:        "approved",
-				Type:          "debit",
-				Comment:       "shopping",
-			},
 			setup: func() (*transactionManagementService, *http.Request) {
 				mockLogic := mock.NewMockTransactionManagementServiceLogicIer(mockCtrl)
 				mockLogic.EXPECT().NewTransaction(model.NewTransaction{
@@ -163,7 +154,7 @@ func TestTransactionManagementService_NewTransaction(t *testing.T) {
 				svc := &transactionManagementService{
 					logic: mockLogic,
 				}
-				by, err := json.Marshal(model.Transaction{
+				by, err := json.Marshal(model.NewTransaction{
 					AccountNumber: 1,
 					Amount:        1000,
 					TransferTo:    2,
@@ -314,7 +305,6 @@ func TestTransactionManagementService_GetTransactions(t *testing.T) {
 
 	tests := []struct {
 		name  string
-		model model.Transaction
 		setup func() (*transactionManagementService, *http.Request)
 		want  func(recorder httptest.ResponseRecorder)
 	}{

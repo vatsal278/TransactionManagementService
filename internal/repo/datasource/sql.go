@@ -68,7 +68,7 @@ func (d sqlDs) Get(filter map[string]interface{}, limit int, offset int) ([]mode
 		}
 	}
 	r := " ORDER BY created_at ;"
-	if limit > 0 || offset >= 0 {
+	if limit > 0 {
 		r = fmt.Sprintf(" ORDER BY created_at LIMIT %d OFFSET %d ;", limit, offset)
 	}
 	q += r
