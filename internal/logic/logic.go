@@ -107,13 +107,14 @@ func (l transactionManagementServiceLogic) NewTransaction(newTransaction model.N
 			log.Error(err)
 			return
 		}
-		client := http.Client{Timeout: 5 * time.Second}
+		client := http.Client{Timeout: 3 * time.Second}
 		_, err = client.Do(req)
 		if err != nil {
 			log.Error(err)
 			return
 		}
 	}(by)
+
 	return &respModel.Response{
 		Status:  http.StatusCreated,
 		Message: "SUCCESS",

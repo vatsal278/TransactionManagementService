@@ -6,12 +6,14 @@ import (
 	respModel "github.com/PereRohit/util/model"
 	"github.com/PereRohit/util/testutil"
 	"github.com/golang/mock/gomock"
+	"github.com/gorilla/mux"
 	"github.com/vatsal278/TransactionManagementService/internal/codes"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -82,7 +84,7 @@ func TestTransactionManagementServiceLogic_GetTransactions(t *testing.T) {
 				return mockDs, ""
 			},
 			want: func(resp *respModel.Response) {
-				var users = model.GetTransaction{AccountNumber: 1}
+				var users = model.Transaction{AccountNumber: 1}
 				temp := respModel.Response{
 					Status:  http.StatusOK,
 					Message: "SUCCESS",
@@ -126,7 +128,7 @@ func TestTransactionManagementServiceLogic_GetTransactions(t *testing.T) {
 				return mockDs, ""
 			},
 			want: func(resp *respModel.Response) {
-				var users = model.GetTransaction{AccountNumber: 1}
+				var users = model.Transaction{AccountNumber: 1}
 				temp := respModel.Response{
 					Status:  http.StatusOK,
 					Message: "SUCCESS",
@@ -190,10 +192,40 @@ func TestTransactionManagementServiceLogic_GetTransactions(t *testing.T) {
 	}
 }
 
+type TestServer struct {
+	srv *httptest.Server
+	t   *testing.T
+	wg  *sync.WaitGroup
+}
+
+func testClient(c *TestServer) {
+	router := mux.NewRouter()
+	router.HandleFunc("/microbank/v1/account/update/transaction", func(w http.ResponseWriter, r *http.Request) {
+		defer c.wg.Done()
+		defer c.t.Log("Hit")
+		expectedReqBody, _ := json.Marshal(model.UpdateTransaction{
+			AccountNumber:   0,
+			Amount:          1000,
+			TransactionType: "debit",
+		})
+		reqBody, _ := ioutil.ReadAll(r.Body)
+		if string(reqBody) != string(expectedReqBody) {
+			c.t.Errorf("Expected request body '%s', got '%s'", expectedReqBody, reqBody)
+			c.t.Fail()
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}).Methods(http.MethodPut)
+	c.srv = httptest.NewServer(router)
+}
+
 func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-
+	tStruct := &TestServer{
+		t:  t,
+		wg: &sync.WaitGroup{},
+	}
 	tests := []struct {
 		name        string
 		credentials model.NewTransaction
@@ -242,37 +274,16 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 				Amount: 1000,
 			},
 			setup: func() (datasource.DataSourceI, string) {
-				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					t.Log("Hit")
-					if r.Method != "PUT" {
-						t.Errorf("Expected method 'PUT', got '%s'", r.Method)
-						t.Fail()
-						return
-					}
-					if r.URL.Path != "/microbank/v1/account/update/transaction" {
-						t.Errorf("Expected URL '/microbank/v1/account/update/transaction', got '%s'", r.URL.Path)
-						t.Fail()
-						return
-					}
-					expectedReqBody, _ := json.Marshal(model.UpdateTransaction{
-						AccountNumber:   0,
-						Amount:          1000,
-						TransactionType: "debit",
-					})
-					reqBody, _ := ioutil.ReadAll(r.Body)
-					if string(reqBody) != string(expectedReqBody) {
-						t.Errorf("Expected request body '%s', got '%s'", expectedReqBody, reqBody)
-						t.Fail()
-						return
-					}
-					w.WriteHeader(http.StatusOK)
-				}))
+				tStruct.wg.Add(1)
+				testClient(tStruct)
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				mockDs.EXPECT().Insert(gomock.Any()).Times(1).Return(nil)
 
-				return mockDs, srv.URL
+				return mockDs, tStruct.srv.URL
 			},
 			want: func(resp *respModel.Response) {
+				tStruct.wg.Wait()
+				tStruct.srv.Close()
 				temp := respModel.Response{
 					Status:  http.StatusCreated,
 					Message: "SUCCESS",
