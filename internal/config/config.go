@@ -16,16 +16,15 @@ import (
 type Config struct {
 	ServiceRouteVersion string              `json:"service_route_version"`
 	ServerConfig        config.ServerConfig `json:"server_config"`
-	// add custom config structs below for any internal services
-	DataBase         DbCfg        `json:"db_svc"`
-	SecretKey        string       `json:"secret_key"`
-	Cookie           CookieStruct `json:"cookie"`
-	Cache            CacheCfg     `json:"cache"`
-	AccSvcUrl        string       `json:"acc_svc_url"`
-	PdfServiceUrl    string       `json:"pdf_svc_url"`
-	UserSvcUrl       string       `json:"user_svc_url"`
-	HtmlTemplateFile string       `json:"html_template_file_path"`
-	TemplateUuid     string       `json:"html_template_file_uuid"`
+	DataBase            DbCfg               `json:"db_svc"`
+	SecretKey           string              `json:"secret_key"`
+	Cookie              CookieStruct        `json:"cookie"`
+	Cache               CacheCfg            `json:"cache"`
+	AccSvcUrl           string              `json:"acc_svc_url"`
+	PdfServiceUrl       string              `json:"pdf_svc_url"`
+	UserSvcUrl          string              `json:"user_svc_url"`
+	HtmlTemplateFile    string              `json:"html_template_file_path"`
+	TemplateUuid        string              `json:"html_template_file_uuid"`
 }
 
 type SvcConfig struct {
@@ -120,11 +119,11 @@ func InitSvcConfig(cfg Config) *SvcConfig {
 	}
 	cfg.Cache.Time = duration
 	pdfSvcI := sdk.NewHtmlToPdfSvc(cfg.PdfServiceUrl)
-	file, err := os.ReadFile(cfg.HtmlTemplateFile)
-	if err != nil {
-		panic(err.Error())
-	}
 	if cfg.TemplateUuid == "" {
+		file, err := os.ReadFile(cfg.HtmlTemplateFile)
+		if err != nil {
+			panic(err.Error())
+		}
 		uuid, err := pdfSvcI.Register(file)
 		if err != nil {
 			panic(err.Error())
