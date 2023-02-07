@@ -117,6 +117,7 @@ func (l transactionManagementServiceLogic) NewTransaction(newTransaction model.N
 			return
 		}
 	}(by)
+
 	return &respModel.Response{
 		Status:  http.StatusCreated,
 		Message: "SUCCESS",
