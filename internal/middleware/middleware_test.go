@@ -187,7 +187,6 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 			setupFunc: func() (*http.Request, authentication.JWTService) {
 
 				req := httptest.NewRequest(http.MethodGet, "http://localhost:80", nil)
-				//authentication := jwtSvc.JWTAuthService()
 				req.AddCookie(&http.Cookie{
 					Name:  "token",
 					Value: "123",
@@ -262,7 +261,6 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 			setupFunc: func() (*http.Request, authentication.JWTService) {
 
 				req := httptest.NewRequest(http.MethodGet, "http://localhost:80", nil)
-				//authentication := jwtSvc.JWTAuthService()
 				req.AddCookie(&http.Cookie{
 					Name:  "token",
 					Value: "123",

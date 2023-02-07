@@ -31,12 +31,11 @@ type SvcConfig struct {
 	Cfg                 *Config
 	ServiceRouteVersion string
 	SvrCfg              config.ServerConfig
-	// add internal services after init
-	DbSvc           DbSvc
-	JwtSvc          JWTSvc
-	Cacher          CacherSvc
-	PdfSvc          PdfSvc
-	ExternalService ExternalSvc
+	DbSvc               DbSvc
+	JwtSvc              JWTSvc
+	Cacher              CacherSvc
+	PdfSvc              PdfSvc
+	ExternalService     ExternalSvc
 }
 type DbSvc struct {
 	Db *sql.DB

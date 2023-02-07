@@ -38,7 +38,6 @@ func NewTransactionManagementServiceLogic(ds datasource.DataSourceI, ut config.E
 }
 
 func (l transactionManagementServiceLogic) HealthCheck() bool {
-	// check all internal services are working fine
 	return l.DsSvc.HealthCheck()
 }
 
@@ -171,7 +170,6 @@ func (l transactionManagementServiceLogic) DownloadTransaction(id string, cookie
 		}
 	}
 	var userResp respModel.Response
-	//var user model.UserDetails
 	by, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return &respModel.Response{

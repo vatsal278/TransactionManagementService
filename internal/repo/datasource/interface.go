@@ -8,5 +8,4 @@ type DataSourceI interface {
 	HealthCheck() bool
 	Get(map[string]interface{}, int, int) ([]model.Transaction, int, error)
 	Insert(user model.Transaction) error
-	//Update(filterSet map[string]interface{}, filterWhere map[string]interface{}) error
 }

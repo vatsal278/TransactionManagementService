@@ -45,11 +45,9 @@ func (d sqlDs) HealthCheck() bool {
 }
 
 func (d sqlDs) Get(filter map[string]interface{}, limit int, offset int) ([]model.Transaction, int, error) {
-	//order the queries based on email address
 	var transaction model.Transaction
 	var transactions []model.Transaction
 	var count int
-	//include user_id in model and also query it for internal use but never pass it into response
 	q := fmt.Sprintf("SELECT transaction_id, account_number, user_id, amount, transfer_to, created_at, updated_at, status, type, comment FROM %s", d.table)
 	whereQuery := queryFromMap(filter, " AND ")
 	if whereQuery != "" {
