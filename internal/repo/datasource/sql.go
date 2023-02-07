@@ -13,7 +13,6 @@ type sqlDs struct {
 	table  string
 }
 
-//docker run --rm --env MYSQL_ROOT_PASSWORD=pass --env MYSQL_DATABASE=accmgmt --publish 9085:3306 --name mysqlDb -d mysql
 func NewSql(dbSvc config.DbSvc, tableName string) DataSourceI {
 	return &sqlDs{
 		sqlSvc: dbSvc.Db,
@@ -42,10 +41,7 @@ func queryFromMap(d map[string]interface{}, join string) string {
 
 func (d sqlDs) HealthCheck() bool {
 	err := d.sqlSvc.Ping()
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 func (d sqlDs) Get(filter map[string]interface{}, limit int, offset int) ([]model.Transaction, int, error) {

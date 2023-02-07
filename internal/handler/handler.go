@@ -120,6 +120,7 @@ func (svc transactionManagementService) DownloadTransaction(w http.ResponseWrite
 	}
 	_, err := w.Write(pdf)
 	if err != nil {
+		log.Error(err)
 		response.ToJson(w, http.StatusInternalServerError, codes.GetErr(codes.ErrPdf), nil)
 		return
 	}
