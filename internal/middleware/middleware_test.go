@@ -486,8 +486,19 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 					return
 				}
 				by, _ := ioutil.ReadAll(res.Body)
-				if !reflect.DeepEqual([]byte(""), by) {
-					t.Errorf("Want: %v, Got: %v", "", string(by))
+				result := model.Response{}
+				err := json.Unmarshal(by, &result)
+				if err != nil {
+					t.Log(err)
+					return
+				}
+				expected := &model.Response{
+					Status:  http.StatusBadRequest,
+					Message: codes.GetErr(codes.ErrGetTransaction),
+					Data:    nil,
+				}
+				if !reflect.DeepEqual(&result, expected) {
+					t.Errorf("Want: %v, Got: %v", expected, result)
 				}
 			},
 		},
