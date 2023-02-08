@@ -197,7 +197,7 @@ func (l transactionManagementServiceLogic) DownloadTransaction(id string, cookie
 	}
 	pdfSvc := l.UtilSvc.PdfSvc.PdfService
 	pdf, err := pdfSvc.GeneratePdf(map[string]interface{}{
-		"Name":                      user["Name"],
+		"Name":                      user["name"],
 		"TransferFromAccountNumber": transactions[0].AccountNumber,
 		"TransferToAccountNumber":   transactions[0].TransferTo,
 		"TransactionId":             transactions[0].TransactionId,
@@ -208,6 +208,7 @@ func (l transactionManagementServiceLogic) DownloadTransaction(id string, cookie
 		"Comment":                   transactions[0].Comment,
 	}, l.UtilSvc.PdfSvc.UuId)
 	if err != nil {
+		log.Error(err)
 		return &respModel.Response{
 			Status:  http.StatusInternalServerError,
 			Message: codes.GetErr(codes.ErrPdf),
