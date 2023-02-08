@@ -162,27 +162,36 @@ type TestServer struct {
 	srv *httptest.Server
 	t   *testing.T
 	wg  *sync.WaitGroup
+	hit bool
 }
 
-func testClient(c *TestServer) {
-	router := mux.NewRouter()
-	router.HandleFunc("/microbank/v1/account/update/transaction", func(w http.ResponseWriter, r *http.Request) {
-		defer c.wg.Done()
-		defer c.t.Log("Hit")
-		expectedReqBody, _ := json.Marshal(model.UpdateTransaction{
-			AccountNumber:   0,
-			Amount:          1000,
-			TransactionType: "debit",
-		})
-		reqBody, _ := ioutil.ReadAll(r.Body)
-		if string(reqBody) != string(expectedReqBody) {
-			c.t.Errorf("Expected request body '%s', got '%s'", expectedReqBody, reqBody)
-			c.t.Fail()
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-	}).Methods(http.MethodPut)
-	c.srv = httptest.NewServer(router)
+func testClient(hit *bool) func(*TestServer) {
+	return func(c *TestServer) {
+		router := mux.NewRouter()
+		router.HandleFunc("/microbank/v1/account/update/transaction", func(w http.ResponseWriter, r *http.Request) {
+			defer c.wg.Done()
+			defer c.t.Log("Hit")
+			*hit = true
+			expectedReqBody, _ := json.Marshal(model.UpdateTransaction{
+				AccountNumber:   0,
+				Amount:          1000,
+				TransactionType: "debit",
+			})
+			reqBody, _ := ioutil.ReadAll(r.Body)
+			if string(reqBody) != string(expectedReqBody) {
+				c.t.Errorf("Expected request body '%s', got '%s'", expectedReqBody, reqBody)
+				c.t.Fail()
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		}).Methods(http.MethodPut)
+		router.HandleFunc("/fail/microbank/v1/account/update/transaction", func(w http.ResponseWriter, r *http.Request) {
+			defer c.wg.Done()
+			defer c.t.Log("Hit")
+			w.WriteHeader(http.StatusInternalServerError)
+		}).Methods(http.MethodPut)
+		c.srv = httptest.NewServer(router)
+	}
 }
 
 func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
@@ -241,7 +250,8 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 			},
 			setup: func() (datasource.DataSourceI, string) {
 				tStruct.wg.Add(1)
-				testClient(tStruct)
+				x := testClient(&tStruct.hit)
+				x(tStruct)
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				mockDs.EXPECT().Insert(gomock.Any()).Times(1).Return(nil)
 
@@ -250,6 +260,34 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 			want: func(resp *respModel.Response) {
 				tStruct.wg.Wait()
 				tStruct.srv.Close()
+				if !tStruct.hit {
+					t.Errorf("Want: %v, Got: %v", true, tStruct.hit)
+				}
+				temp := respModel.Response{
+					Status:  http.StatusCreated,
+					Message: "SUCCESS",
+					Data:    nil,
+				}
+				if !reflect.DeepEqual(resp, &temp) {
+					t.Errorf("Want: %v, Got: %v", temp, resp)
+				}
+			},
+		},
+		{
+			name: "Failure::client do failure",
+			credentials: model.NewTransaction{
+				UserId: "123",
+				Type:   "debit",
+				Status: "approved",
+				Amount: 1000,
+			},
+			setup: func() (datasource.DataSourceI, string) {
+				mockDs := mock.NewMockDataSourceI(mockCtrl)
+				mockDs.EXPECT().Insert(gomock.Any()).Times(1).Return(nil)
+
+				return mockDs, ""
+			},
+			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
 					Status:  http.StatusCreated,
 					Message: "SUCCESS",
@@ -285,7 +323,6 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := NewTransactionManagementServiceLogic(tt.setup())
-			time.Sleep(2 * time.Second)
 			got := rec.NewTransaction(tt.credentials)
 
 			tt.want(got)
