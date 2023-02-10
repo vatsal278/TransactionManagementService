@@ -239,8 +239,7 @@ func testClient(hit *bool) func(*TestServer) {
 				c.t.Errorf("Want: %v, Got: %v", "", val.Value)
 				return
 			}
-			response.ToJson(w, http.StatusOK, "", Reader(""))
-			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(Reader(""))
 		}).Methods(http.MethodGet)
 		router.HandleFunc("/errorAssert/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
 			defer c.wg.Done()
