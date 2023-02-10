@@ -253,7 +253,21 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 				x := testClient(&tStruct.hit)
 				x(tStruct)
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
-				mockDs.EXPECT().Insert(gomock.Any()).Times(1).Return(nil)
+				mockDs.EXPECT().Insert(gomock.Any()).Times(1).DoAndReturn(func(tr model.Transaction) error {
+					tr.TransactionId = ""
+					tr.CreatedAt = time.Time{}
+					diff := testutil.Diff(tr, model.Transaction{
+						UserId:        "123",
+						AccountNumber: 0,
+						Type:          "debit",
+						Status:        "approved",
+						Amount:        1000,
+					})
+					if diff != "" {
+						t.Error(testutil.Callers(), diff)
+					}
+					return nil
+				})
 
 				return mockDs, tStruct.srv.URL
 			},
@@ -283,7 +297,21 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 			},
 			setup: func() (datasource.DataSourceI, string) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
-				mockDs.EXPECT().Insert(gomock.Any()).Times(1).Return(nil)
+				mockDs.EXPECT().Insert(gomock.Any()).Times(1).DoAndReturn(func(tr model.Transaction) error {
+					tr.TransactionId = ""
+					tr.CreatedAt = time.Time{}
+					diff := testutil.Diff(tr, model.Transaction{
+						UserId:        "123",
+						AccountNumber: 0,
+						Type:          "debit",
+						Status:        "approved",
+						Amount:        1000,
+					})
+					if diff != "" {
+						t.Error(testutil.Callers(), diff)
+					}
+					return nil
+				})
 
 				return mockDs, ""
 			},
@@ -305,7 +333,19 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 			},
 			setup: func() (datasource.DataSourceI, string) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
-				mockDs.EXPECT().Insert(gomock.Any()).Return(errors.New("error"))
+				mockDs.EXPECT().Insert(gomock.Any()).Times(1).DoAndReturn(func(tr model.Transaction) error {
+					tr.TransactionId = ""
+					tr.CreatedAt = time.Time{}
+					diff := testutil.Diff(tr, model.Transaction{
+						UserId:        "123",
+						AccountNumber: 0,
+						Amount:        0,
+					})
+					if diff != "" {
+						t.Error(testutil.Callers(), diff)
+					}
+					return errors.New("error")
+				})
 				return mockDs, ""
 			},
 			want: func(resp *respModel.Response) {
