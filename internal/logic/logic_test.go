@@ -272,21 +272,6 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 					}
 					return nil
 				})
-				mockDs.EXPECT().Insert(gomock.Any()).Times(1).DoAndReturn(func(tr model.Transaction) error {
-					tr.TransactionId = ""
-					tr.CreatedAt = time.Time{}
-					diff := testutil.Diff(tr, model.Transaction{
-						UserId:        "123",
-						AccountNumber: 0,
-						Amount:        1000,
-						Status:        "approved",
-						Type:          "debit",
-					})
-					if diff != "" {
-						t.Error(testutil.Callers(), diff)
-					}
-					return nil
-				})
 
 				return mockDs, config.ExternalSvc{AccSvcUrl: tStruct.srv.URL}
 			},
@@ -331,21 +316,6 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 					}
 					return nil
 				})
-				mockDs.EXPECT().Insert(gomock.Any()).Times(1).DoAndReturn(func(tr model.Transaction) error {
-					tr.TransactionId = ""
-					tr.CreatedAt = time.Time{}
-					diff := testutil.Diff(tr, model.Transaction{
-						UserId:        "123",
-						AccountNumber: 0,
-						Amount:        1000,
-						Status:        "approved",
-						Type:          "debit",
-					})
-					if diff != "" {
-						t.Error(testutil.Callers(), diff)
-					}
-					return nil
-				})
 
 				return mockDs, config.ExternalSvc{}
 			},
@@ -367,20 +337,6 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 			},
 			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
-				mockDs.EXPECT().Insert(gomock.Any()).Times(1).DoAndReturn(func(tr model.Transaction) error {
-					tr.TransactionId = ""
-					tr.CreatedAt = time.Time{}
-					diff := testutil.Diff(tr, model.Transaction{
-						UserId:        "123",
-						AccountNumber: 0,
-						Amount:        0,
-					})
-					if diff != "" {
-						t.Error(testutil.Callers(), diff)
-					}
-					return errors.New("error")
-				})
-				return mockDs, config.ExternalSvc{}
 				mockDs.EXPECT().Insert(gomock.Any()).Times(1).DoAndReturn(func(tr model.Transaction) error {
 					tr.TransactionId = ""
 					tr.CreatedAt = time.Time{}
