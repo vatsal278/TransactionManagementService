@@ -93,7 +93,7 @@ func (l transactionManagementServiceLogic) NewTransaction(newTransaction model.N
 	upTransaction := model.UpdateTransaction{AccountNumber: newTransaction.AccountNumber, Amount: newTransaction.Amount, TransactionType: newTransaction.Type}
 	by, err := json.Marshal(upTransaction)
 	if err != nil {
-		log.Error(codes.GetErr(codes.ErrNewTransaction))
+		log.Error(err)
 		return &respModel.Response{
 			Status:  http.StatusInternalServerError,
 			Message: codes.GetErr(codes.ErrNewTransaction),
