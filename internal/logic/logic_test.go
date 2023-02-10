@@ -11,8 +11,7 @@ import (
 	"github.com/vatsal278/TransactionManagementService/internal/codes"
 	"github.com/vatsal278/TransactionManagementService/internal/config"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
-	"github.com/vatsal278/TransactionManagementService/internal/repo/datasource"
-	"github.com/vatsal278/TransactionManagementService/pkg/mock"
+
 	pdfMock "github.com/vatsal278/html-pdf-service/pkg/mock"
 	"io/ioutil"
 	"net/http"
@@ -21,6 +20,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/vatsal278/TransactionManagementService/internal/repo/datasource"
+	"github.com/vatsal278/TransactionManagementService/pkg/mock"
 )
 
 type Reader string
@@ -164,27 +166,36 @@ type TestServer struct {
 	srv *httptest.Server
 	t   *testing.T
 	wg  *sync.WaitGroup
+	hit bool
 }
 
-func testClient(c *TestServer) {
-	router := mux.NewRouter()
-	router.HandleFunc("/microbank/v1/account/update/transaction", func(w http.ResponseWriter, r *http.Request) {
-		defer c.wg.Done()
-		defer c.t.Log("Hit")
-		expectedReqBody, _ := json.Marshal(model.UpdateTransaction{
-			AccountNumber:   0,
-			Amount:          1000,
-			TransactionType: "debit",
-		})
-		reqBody, _ := ioutil.ReadAll(r.Body)
-		if string(reqBody) != string(expectedReqBody) {
-			c.t.Errorf("Expected request body '%s', got '%s'", expectedReqBody, reqBody)
-			c.t.Fail()
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-	}).Methods(http.MethodPut)
-	c.srv = httptest.NewServer(router)
+func testClient(hit *bool) func(*TestServer) {
+	return func(c *TestServer) {
+		router := mux.NewRouter()
+		router.HandleFunc("/microbank/v1/account/update/transaction", func(w http.ResponseWriter, r *http.Request) {
+			defer c.wg.Done()
+			defer c.t.Log("Hit")
+			*hit = true
+			expectedReqBody, _ := json.Marshal(model.UpdateTransaction{
+				AccountNumber:   0,
+				Amount:          1000,
+				TransactionType: "debit",
+			})
+			reqBody, _ := ioutil.ReadAll(r.Body)
+			if string(reqBody) != string(expectedReqBody) {
+				c.t.Errorf("Expected request body '%s', got '%s'", expectedReqBody, reqBody)
+				c.t.Fail()
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		}).Methods(http.MethodPut)
+		router.HandleFunc("/fail/microbank/v1/account/update/transaction", func(w http.ResponseWriter, r *http.Request) {
+			defer c.wg.Done()
+			defer c.t.Log("Hit")
+			w.WriteHeader(http.StatusInternalServerError)
+		}).Methods(http.MethodPut)
+		c.srv = httptest.NewServer(router)
+	}
 }
 
 func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
@@ -243,7 +254,8 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 			},
 			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
 				tStruct.wg.Add(1)
-				testClient(tStruct)
+				x := testClient(&tStruct.hit)
+				x(tStruct)
 				mockDs := mock.NewMockDataSourceI(mockCtrl)
 				mockDs.EXPECT().Insert(gomock.Any()).Times(1).Return(nil)
 
@@ -252,6 +264,34 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 			want: func(resp *respModel.Response) {
 				tStruct.wg.Wait()
 				tStruct.srv.Close()
+				if !tStruct.hit {
+					t.Errorf("Want: %v, Got: %v", true, tStruct.hit)
+				}
+				temp := respModel.Response{
+					Status:  http.StatusCreated,
+					Message: "SUCCESS",
+					Data:    nil,
+				}
+				if !reflect.DeepEqual(resp, &temp) {
+					t.Errorf("Want: %v, Got: %v", temp, resp)
+				}
+			},
+		},
+		{
+			name: "Failure::client do failure",
+			credentials: model.NewTransaction{
+				UserId: "123",
+				Type:   "debit",
+				Status: "approved",
+				Amount: 1000,
+			},
+			setup: func() (datasource.DataSourceI, config.ExternalSvc) {
+				mockDs := mock.NewMockDataSourceI(mockCtrl)
+				mockDs.EXPECT().Insert(gomock.Any()).Times(1).Return(nil)
+
+				return mockDs, config.ExternalSvc{}
+			},
+			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
 					Status:  http.StatusCreated,
 					Message: "SUCCESS",
@@ -287,7 +327,6 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := NewTransactionManagementServiceLogic(tt.setup())
-
 			got := rec.NewTransaction(tt.credentials)
 
 			tt.want(got)
@@ -428,6 +467,15 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, nil)
 				router := mux.NewRouter()
 				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
+					val, err := r.Cookie("token")
+					if err != nil {
+						t.Errorf("Want: %v, Got: %v", "", err)
+						return
+					}
+					if val.Value != "123" {
+						t.Errorf("Want: %v, Got: %v", "", val.Value)
+						return
+					}
 					response.ToJson(w, http.StatusBadRequest, "Success", map[string]interface{}{"Name": "abc"})
 				})
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
@@ -455,6 +503,15 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, nil)
 				router := mux.NewRouter()
 				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
+					val, err := r.Cookie("token")
+					if err != nil {
+						t.Errorf("Want: %v, Got: %v", "", err)
+						return
+					}
+					if val.Value != "123" {
+						t.Errorf("Want: %v, Got: %v", "", val.Value)
+						return
+					}
 					json.NewEncoder(w).Encode(Reader(""))
 				})
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
@@ -482,6 +539,15 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, nil)
 				router := mux.NewRouter()
 				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
+					val, err := r.Cookie("token")
+					if err != nil {
+						t.Errorf("Want: %v, Got: %v", "", err)
+						return
+					}
+					if val.Value != "123" {
+						t.Errorf("Want: %v, Got: %v", "", val.Value)
+						return
+					}
 					response.ToJson(w, http.StatusOK, "Success", Reader(""))
 				})
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
@@ -509,10 +575,31 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, nil)
 				router := mux.NewRouter()
 				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
+					val, err := r.Cookie("token")
+					if err != nil {
+						t.Errorf("Want: %v, Got: %v", "", err)
+						return
+					}
+					if val.Value != "123" {
+						t.Errorf("Want: %v, Got: %v", "", val.Value)
+						return
+					}
 					response.ToJson(w, http.StatusOK, "Success", map[string]interface{}{"Name": "abc"})
 				})
+				var transactions []model.Transaction
+				transactions = append(transactions, model.Transaction{UserId: "123", AccountNumber: 1})
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
-				mockPdf.EXPECT().GeneratePdf(gomock.Any(), gomock.Any()).Return([]byte("PDF"), errors.New("pdf generate error"))
+				mockPdf.EXPECT().GeneratePdf(map[string]interface{}{
+					"Name":                      "abc",
+					"TransferFromAccountNumber": transactions[0].AccountNumber,
+					"TransferToAccountNumber":   transactions[0].TransferTo,
+					"TransactionId":             transactions[0].TransactionId,
+					"Amount":                    transactions[0].Amount,
+					"Date":                      transactions[0].CreatedAt,
+					"Status":                    transactions[0].Status,
+					"Type":                      transactions[0].Type,
+					"Comment":                   transactions[0].Comment,
+				}, "11-22-33-44").Return([]byte("PDF"), errors.New("pdf generate error"))
 				srv := httptest.NewServer(router)
 				return mockDs, config.ExternalSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},

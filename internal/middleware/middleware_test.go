@@ -156,7 +156,7 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 				})
 				mockJwtSvc := mock.NewMockJWTService(mockCtrl)
 				err := errors.New(" err ")
-				mockJwtSvc.EXPECT().ValidateToken(gomock.Any()).Return(nil, err)
+				mockJwtSvc.EXPECT().ValidateToken(" jwtToken").Return(nil, err)
 
 				return req, mockJwtSvc
 			},
@@ -193,7 +193,7 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 				})
 				mockJwtSvc := mock.NewMockJWTService(mockCtrl)
 				err := errors.New(" Token is expired ")
-				mockJwtSvc.EXPECT().ValidateToken(gomock.Any()).Return(nil, err)
+				mockJwtSvc.EXPECT().ValidateToken("123").Return(nil, err)
 
 				return req, mockJwtSvc
 			},
@@ -230,7 +230,7 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 				})
 				mockJwtSvc := mock.NewMockJWTService(mockCtrl)
 				token := jwtGo.Token{Valid: false}
-				mockJwtSvc.EXPECT().ValidateToken(gomock.Any()).Return(&token, nil)
+				mockJwtSvc.EXPECT().ValidateToken("123").Return(&token, nil)
 
 				return req, mockJwtSvc
 			},
@@ -270,7 +270,7 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 					Claims: nil,
 					Valid:  true,
 				}
-				mockJwtSvc.EXPECT().ValidateToken(gomock.Any()).Return(&token, nil)
+				mockJwtSvc.EXPECT().ValidateToken("123").Return(&token, nil)
 
 				return req, mockJwtSvc
 			},
@@ -310,7 +310,7 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 					Claims: jwtGo.MapClaims{},
 					Valid:  true,
 				}
-				mockJwtSvc.EXPECT().ValidateToken(gomock.Any()).Return(&token, nil)
+				mockJwtSvc.EXPECT().ValidateToken("123").Return(&token, nil)
 
 				return req, mockJwtSvc
 			},
@@ -350,7 +350,7 @@ func TestTransactionMgmtMiddleware_ExtractUser(t *testing.T) {
 					Claims: jwtGo.MapClaims{"user_id": 1200},
 					Valid:  true,
 				}
-				mockJwtSvc.EXPECT().ValidateToken(gomock.Any()).Return(&token, nil)
+				mockJwtSvc.EXPECT().ValidateToken("123").Return(&token, nil)
 
 				return req, mockJwtSvc
 			},
@@ -433,6 +433,9 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 				if !reflect.DeepEqual([]byte("ok"), by) {
 					t.Errorf("Want: %v, Got: %v", "ok", string(by))
 				}
+				if !reflect.DeepEqual(http.StatusOK, res.Code) {
+					t.Errorf("Want: %v, Got: %v", http.StatusOK, res.Code)
+				}
 				if !reflect.DeepEqual("application/json", res.Header().Get("Content-Type")) {
 					t.Errorf("Want: %v, Got: %v", "application/json", res.Header().Get("Content-Type"))
 				}
@@ -483,8 +486,19 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 					return
 				}
 				by, _ := ioutil.ReadAll(res.Body)
-				if !reflect.DeepEqual([]byte(""), by) {
-					t.Errorf("Want: %v, Got: %v", "", string(by))
+				result := model.Response{}
+				err := json.Unmarshal(by, &result)
+				if err != nil {
+					t.Log(err)
+					return
+				}
+				expected := &model.Response{
+					Status:  http.StatusBadRequest,
+					Message: codes.GetErr(codes.ErrGetTransaction),
+					Data:    nil,
+				}
+				if !reflect.DeepEqual(&result, expected) {
+					t.Errorf("Want: %v, Got: %v", expected, result)
 				}
 			},
 		},
