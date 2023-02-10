@@ -194,6 +194,70 @@ func testClient(hit *bool) func(*TestServer) {
 			defer c.t.Log("Hit")
 			w.WriteHeader(http.StatusInternalServerError)
 		}).Methods(http.MethodPut)
+		router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
+			defer c.wg.Done()
+			defer c.t.Log("Hit")
+			*hit = true
+			val, err := r.Cookie("token")
+			if err != nil {
+				c.t.Errorf("Want: %v, Got: %v", "", err)
+				return
+			}
+			if val.Value != "123" {
+				c.t.Errorf("Want: %v, Got: %v", "", val.Value)
+				return
+			}
+			response.ToJson(w, http.StatusOK, "Success", map[string]interface{}{"name": "abc"})
+			w.WriteHeader(http.StatusOK)
+		}).Methods(http.MethodGet)
+		router.HandleFunc("/fail/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
+			defer c.wg.Done()
+			defer c.t.Log("Hit")
+			*hit = true
+			val, err := r.Cookie("token")
+			if err != nil {
+				c.t.Errorf("Want: %v, Got: %v", "", err)
+				return
+			}
+			if val.Value != "123" {
+				c.t.Errorf("Want: %v, Got: %v", "", val.Value)
+				return
+			}
+			response.ToJson(w, http.StatusBadRequest, "", nil)
+			w.WriteHeader(http.StatusBadRequest)
+		}).Methods(http.MethodGet)
+		router.HandleFunc("/unmarshallError/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
+			defer c.wg.Done()
+			defer c.t.Log("Hit")
+			*hit = true
+			val, err := r.Cookie("token")
+			if err != nil {
+				c.t.Errorf("Want: %v, Got: %v", "", err)
+				return
+			}
+			if val.Value != "123" {
+				c.t.Errorf("Want: %v, Got: %v", "", val.Value)
+				return
+			}
+			response.ToJson(w, http.StatusOK, "", Reader(""))
+			w.WriteHeader(http.StatusOK)
+		}).Methods(http.MethodGet)
+		router.HandleFunc("/errorAssert/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
+			defer c.wg.Done()
+			defer c.t.Log("Hit")
+			*hit = true
+			val, err := r.Cookie("token")
+			if err != nil {
+				c.t.Errorf("Want: %v, Got: %v", "", err)
+				return
+			}
+			if val.Value != "123" {
+				c.t.Errorf("Want: %v, Got: %v", "", val.Value)
+				return
+			}
+			response.ToJson(w, http.StatusOK, "", 1)
+			w.WriteHeader(http.StatusOK)
+		}).Methods(http.MethodGet)
 		c.srv = httptest.NewServer(router)
 	}
 }
@@ -337,7 +401,10 @@ func TestTransactionManagementServiceLogic_NewTransaction(t *testing.T) {
 func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-
+	tStruct := &TestServer{
+		t:  t,
+		wg: &sync.WaitGroup{},
+	}
 	tests := []struct {
 		name          string
 		transactionId string
@@ -352,19 +419,9 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 				var transactions []model.Transaction
 				transactions = append(transactions, model.Transaction{UserId: "123", AccountNumber: 1})
 				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(transactions, 1, nil)
-				router := mux.NewRouter()
-				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
-					val, err := r.Cookie("token")
-					if err != nil {
-						t.Errorf("Want: %v, Got: %v", "", err)
-						return
-					}
-					if val.Value != "123" {
-						t.Errorf("Want: %v, Got: %v", "", val.Value)
-						return
-					}
-					response.ToJson(w, http.StatusOK, "Success", map[string]interface{}{"Name": "abc"})
-				})
+				tStruct.wg.Add(1)
+				x := testClient(&tStruct.hit)
+				x(tStruct)
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
 
 				mockPdf.EXPECT().GeneratePdf(map[string]interface{}{
@@ -378,14 +435,16 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 					"Type":                      transactions[0].Type,
 					"Comment":                   transactions[0].Comment,
 				}, "11-22-33-44").Return([]byte("PDF"), nil)
-				srv := httptest.NewServer(router)
-				return mockDs, config.ExternalSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+				return mockDs, config.ExternalSvc{UserSvc: tStruct.srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
 					Status:  http.StatusOK,
 					Message: "SUCCESS",
 					Data:    []byte("PDF"),
+				}
+				if !tStruct.hit {
+					t.Errorf("Want: %v, Got: %v", true, tStruct.hit)
 				}
 				if !reflect.DeepEqual(resp, &temp) {
 					t.Errorf("Want: %v, Got: %v", &temp, resp)
@@ -465,22 +524,11 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 				var trans []model.Transaction
 				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
 				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, nil)
-				router := mux.NewRouter()
-				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
-					val, err := r.Cookie("token")
-					if err != nil {
-						t.Errorf("Want: %v, Got: %v", "", err)
-						return
-					}
-					if val.Value != "123" {
-						t.Errorf("Want: %v, Got: %v", "", val.Value)
-						return
-					}
-					response.ToJson(w, http.StatusBadRequest, "Success", map[string]interface{}{"Name": "abc"})
-				})
+				tStruct.wg.Add(1)
+				x := testClient(&tStruct.hit)
+				x(tStruct)
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
-				srv := httptest.NewServer(router)
-				return mockDs, config.ExternalSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+				return mockDs, config.ExternalSvc{UserSvc: tStruct.srv.URL + "/fail", PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
@@ -501,22 +549,11 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 				var trans []model.Transaction
 				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
 				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, nil)
-				router := mux.NewRouter()
-				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
-					val, err := r.Cookie("token")
-					if err != nil {
-						t.Errorf("Want: %v, Got: %v", "", err)
-						return
-					}
-					if val.Value != "123" {
-						t.Errorf("Want: %v, Got: %v", "", val.Value)
-						return
-					}
-					json.NewEncoder(w).Encode(Reader(""))
-				})
+				tStruct.wg.Add(1)
+				x := testClient(&tStruct.hit)
+				x(tStruct)
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
-				srv := httptest.NewServer(router)
-				return mockDs, config.ExternalSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+				return mockDs, config.ExternalSvc{UserSvc: tStruct.srv.URL + "/unmarshallError", PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
@@ -525,7 +562,7 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 					Data:    nil,
 				}
 				if !reflect.DeepEqual(resp, &temp) {
-					t.Errorf("Want: %v, Got: %v", temp, &resp)
+					t.Errorf("Want: %v, Got: %v", temp, resp)
 				}
 			},
 		},
@@ -537,22 +574,11 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 				var trans []model.Transaction
 				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
 				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, nil)
-				router := mux.NewRouter()
-				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
-					val, err := r.Cookie("token")
-					if err != nil {
-						t.Errorf("Want: %v, Got: %v", "", err)
-						return
-					}
-					if val.Value != "123" {
-						t.Errorf("Want: %v, Got: %v", "", val.Value)
-						return
-					}
-					response.ToJson(w, http.StatusOK, "Success", Reader(""))
-				})
+				tStruct.wg.Add(1)
+				x := testClient(&tStruct.hit)
+				x(tStruct)
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
-				srv := httptest.NewServer(router)
-				return mockDs, config.ExternalSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+				return mockDs, config.ExternalSvc{UserSvc: tStruct.srv.URL + "/errorAssert", PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{
@@ -561,7 +587,7 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 					Data:    nil,
 				}
 				if !reflect.DeepEqual(resp, &temp) {
-					t.Errorf("Want: %v, Got: %v", temp, &resp)
+					t.Errorf("Want: %v, Got: %v", temp, resp)
 				}
 			},
 		},
@@ -573,19 +599,9 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 				var trans []model.Transaction
 				trans = append(trans, model.Transaction{UserId: "123", AccountNumber: 1})
 				mockDs.EXPECT().Get(map[string]interface{}{"transaction_id": "123"}, 0, 0).Times(1).Return(trans, 1, nil)
-				router := mux.NewRouter()
-				router.HandleFunc("/microbank/v1/user", func(w http.ResponseWriter, r *http.Request) {
-					val, err := r.Cookie("token")
-					if err != nil {
-						t.Errorf("Want: %v, Got: %v", "", err)
-						return
-					}
-					if val.Value != "123" {
-						t.Errorf("Want: %v, Got: %v", "", val.Value)
-						return
-					}
-					response.ToJson(w, http.StatusOK, "Success", map[string]interface{}{"Name": "abc"})
-				})
+				tStruct.wg.Add(1)
+				x := testClient(&tStruct.hit)
+				x(tStruct)
 				var transactions []model.Transaction
 				transactions = append(transactions, model.Transaction{UserId: "123", AccountNumber: 1})
 				mockPdf := pdfMock.NewMockHtmlToPdfSvcI(mockCtrl)
@@ -600,8 +616,7 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 					"Type":                      transactions[0].Type,
 					"Comment":                   transactions[0].Comment,
 				}, "11-22-33-44").Return([]byte("PDF"), errors.New("pdf generate error"))
-				srv := httptest.NewServer(router)
-				return mockDs, config.ExternalSvc{UserSvc: srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
+				return mockDs, config.ExternalSvc{UserSvc: tStruct.srv.URL, PdfSvc: config.PdfSvc{UuId: "11-22-33-44", PdfService: mockPdf}}
 			},
 			want: func(resp *respModel.Response) {
 				temp := respModel.Response{

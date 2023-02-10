@@ -151,7 +151,7 @@ func (l transactionManagementServiceLogic) DownloadTransaction(id string, cookie
 		}
 	}
 	req.AddCookie(&http.Cookie{Name: "token", Value: cookie})
-	client := http.Client{Timeout: 2 * time.Second}
+	client := http.Client{Timeout: 3 * time.Second}
 	response, err := client.Do(req)
 	if err != nil {
 		log.Error(err)
