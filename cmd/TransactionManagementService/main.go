@@ -1,7 +1,7 @@
 package main
 
 import (
-    "os"
+	"os"
 
 	"github.com/PereRohit/util/config"
 	"github.com/PereRohit/util/log"
@@ -12,16 +12,20 @@ import (
 )
 
 func main() {
+	// Load the configuration from a JSON file
 	cfg := svcCfg.Config{}
-    	err := config.LoadFromJson("./configs/config.json", &cfg)
-    	if err != nil {
-    		log.Error(err)
-    		os.Exit(1)
-    	}
+	err := config.LoadFromJson("./configs/config.json", &cfg)
+	if err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
 
-    	svcInitCfg := svcCfg.InitSvcConfig(cfg)
+	// Initialize the service configuration based on the loaded configuration
+	svcInitCfg := svcCfg.InitSvcConfig(cfg)
 
-    	r := router.Register(svcInitCfg)
+	// Register the routes and handlers for the service
+	r := router.Register(svcInitCfg)
 
-    	server.Run(r, svcInitCfg.SvrCfg)
+	// Start the server with the registered router and server configuration
+	server.Run(r, svcInitCfg.SvrCfg)
 }
