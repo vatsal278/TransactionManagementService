@@ -35,6 +35,20 @@ func (m *MockTransactionManagementServiceLogicIer) EXPECT() *MockTransactionMana
 	return m.recorder
 }
 
+// GetTransactions mocks base method.
+func (m *MockTransactionManagementServiceLogicIer) GetTransactions(arg0 string, arg1, arg2 int) *model.Response {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTransactions", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*model.Response)
+	return ret0
+}
+
+// GetTransactions indicates an expected call of GetTransactions.
+func (mr *MockTransactionManagementServiceLogicIerMockRecorder) GetTransactions(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransactions", reflect.TypeOf((*MockTransactionManagementServiceLogicIer)(nil).GetTransactions), arg0, arg1, arg2)
+}
+
 // HealthCheck mocks base method.
 func (m *MockTransactionManagementServiceLogicIer) HealthCheck() bool {
 	m.ctrl.T.Helper()
@@ -49,16 +63,16 @@ func (mr *MockTransactionManagementServiceLogicIerMockRecorder) HealthCheck() *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HealthCheck", reflect.TypeOf((*MockTransactionManagementServiceLogicIer)(nil).HealthCheck))
 }
 
-// Ping mocks base method.
-func (m *MockTransactionManagementServiceLogicIer) Ping(arg0 *model0.PingRequest) *model.Response {
+// NewTransaction mocks base method.
+func (m *MockTransactionManagementServiceLogicIer) NewTransaction(arg0 model0.NewTransaction) *model.Response {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Ping", arg0)
+	ret := m.ctrl.Call(m, "NewTransaction", arg0)
 	ret0, _ := ret[0].(*model.Response)
 	return ret0
 }
 
-// Ping indicates an expected call of Ping.
-func (mr *MockTransactionManagementServiceLogicIerMockRecorder) Ping(arg0 interface{}) *gomock.Call {
+// NewTransaction indicates an expected call of NewTransaction.
+func (mr *MockTransactionManagementServiceLogicIerMockRecorder) NewTransaction(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockTransactionManagementServiceLogicIer)(nil).Ping), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewTransaction", reflect.TypeOf((*MockTransactionManagementServiceLogicIer)(nil).NewTransaction), arg0)
 }

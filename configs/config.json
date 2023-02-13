@@ -1,13 +1,26 @@
 {
-  "service_route_version": "v1",
+  "service_route_version": "microbank/v1/transactions",
   "server_config": {
     "host": "",
-    "port": "80",
+    "port": "9070",
     "version": "0.0.1",
     "name": "transactionManagementService",
     "log_level": "info"
   },
-  "custom_svc": {
-    "data": "this is a custom config"
-  }
+  "db_svc": {
+    "dbDriver" : "mysql",
+    "dbUser" : "root",
+    "dbPass" : "pass",
+    "dbName" : "transactionmgmt",
+    "tableName" : "transactiondatabase",
+    "dbHost" : "localhost",
+    "dbPort" : "9075"
+  },
+  "secret_key": "secret",
+  "cache": {
+    "port": "6379",
+    "host": "localhost",
+    "duration":"1m"
+  },
+  "acc_svc_url": "http://localhost:9080"
 }
