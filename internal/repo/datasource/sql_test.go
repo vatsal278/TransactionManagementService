@@ -120,7 +120,11 @@ func TestSqlDs_Get(t *testing.T) {
 				mock.ExpectQuery("SELECT transaction_id, account_number, user_id, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE userid = '1234' ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnError(errors.New("Unknown column"))
 				return dB, mock
 			},
-			validator: func(rows []model.Transaction, count int, err error, sqlmock2 sqlmock.Sqlmock) {
+			validator: func(rows []model.Transaction, count int, err error, mock sqlmock.Sqlmock) {
+				if mock.ExpectationsWereMet() != nil {
+					t.Errorf("Want: %v, Got: %v", nil, mock.ExpectationsWereMet())
+					return
+				}
 				if !strings.Contains(err.Error(), "Unknown column") {
 					t.Errorf("Want: %v, Got: %v", "Unknown column", err)
 				}
