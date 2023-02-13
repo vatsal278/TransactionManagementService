@@ -301,6 +301,10 @@ func TestSqlDs_Insert(t *testing.T) {
 				return dB, mock
 			},
 			validator: func(mock sqlmock.Sqlmock, err error) {
+				if mock.ExpectationsWereMet() != nil {
+					t.Errorf("Want: %v, Got: %v", nil, mock.ExpectationsWereMet())
+					return
+				}
 				if err.Error() != errors.New("sql error").Error() {
 					t.Errorf("Want: %v, Got: %v", "sql error", err.Error())
 					return
