@@ -54,6 +54,10 @@ const (
 	ErrNoTransaction
 	ErrDefaultLimit
 	ErrDefaultPage
+	ErrFetchinDataUserSvc
+	ErrPdf
+	ErrAssertResp
+	ErrAssertPdf
 )
 
 var errCodes = map[errCode]string{
@@ -104,6 +108,10 @@ var errCodes = map[errCode]string{
 	ErrNoTransaction:       "no transactions were found",
 	ErrDefaultPage:         "changing page to default value=1 previously it was",
 	ErrDefaultLimit:        "changing limit to default value=5 previously it was",
+	ErrFetchinDataUserSvc:  "err fetching data from user mgmt svc",
+	ErrPdf:                 "err generating pdf",
+	ErrAssertResp:          "error assert response data",
+	ErrAssertPdf:           "error assert pdf []byte",
 }
 
 func GetErr(code errCode) string {

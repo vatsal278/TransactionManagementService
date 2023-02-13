@@ -5,7 +5,9 @@ import (
 	"github.com/PereRohit/util/log"
 	"github.com/PereRohit/util/request"
 	"github.com/PereRohit/util/response"
+	"github.com/gorilla/mux"
 	"github.com/vatsal278/TransactionManagementService/internal/codes"
+	"github.com/vatsal278/TransactionManagementService/internal/config"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
 	"github.com/vatsal278/TransactionManagementService/pkg/session"
 	"net/http"
@@ -23,15 +25,16 @@ type TransactionManagementServiceHandler interface {
 	HealthChecker
 	GetTransactions(w http.ResponseWriter, r *http.Request)
 	NewTransaction(w http.ResponseWriter, r *http.Request)
+	DownloadTransaction(w http.ResponseWriter, r *http.Request)
 }
 
 type transactionManagementService struct {
 	logic logic.TransactionManagementServiceLogicIer
 }
 
-func NewTransactionManagementService(ds datasource.DataSourceI, as string) TransactionManagementServiceHandler {
+func NewTransactionManagementService(ds datasource.DataSourceI, ut config.ExternalSvc) TransactionManagementServiceHandler {
 	svc := &transactionManagementService{
-		logic: logic.NewTransactionManagementServiceLogic(ds, as),
+		logic: logic.NewTransactionManagementServiceLogic(ds, ut),
 	}
 	AddHealthChecker(svc)
 	return svc
@@ -91,4 +94,36 @@ func (svc transactionManagementService) NewTransaction(w http.ResponseWriter, r 
 	newTransaction.UserId = session.UserId
 	resp := svc.logic.NewTransaction(newTransaction)
 	response.ToJson(w, resp.Status, resp.Message, resp.Data)
+}
+
+func (svc transactionManagementService) DownloadTransaction(w http.ResponseWriter, r *http.Request) {
+	sessionStruct := session.GetSession(r.Context())
+	session, ok := sessionStruct.(model.SessionStruct)
+	if !ok {
+		response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrAssertUserid), nil)
+		return
+	}
+	vars := mux.Vars(r)
+	if len(vars) == 0 {
+		response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrGetTransaction), nil)
+		return
+	}
+	resp := svc.logic.DownloadTransaction(vars["transaction_id"], session.Cookie)
+	if resp.Status != http.StatusOK {
+		response.ToJson(w, resp.Status, resp.Message, resp.Data)
+		return
+	}
+	pdf, ok := resp.Data.([]byte)
+	if !ok {
+		response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrAssertPdf), nil)
+		return
+	}
+	_, err := w.Write(pdf)
+	if err != nil {
+		log.Error(err)
+		response.ToJson(w, http.StatusInternalServerError, codes.GetErr(codes.ErrPdf), nil)
+		return
+	}
+	w.Header().Set("Content-Disposition", "attachment; filename="+vars["transaction_id"]+".pdf")
+	w.Header().Set("Content-Type", "application/pdf")
 }

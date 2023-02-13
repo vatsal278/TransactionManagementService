@@ -9,6 +9,7 @@ type SessionStruct struct {
 	UserId string
 	Cookie string
 }
+
 type NewTransaction struct {
 	UserId        string  `json:"-"`
 	AccountNumber int     `json:"account_number"`

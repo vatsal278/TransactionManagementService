@@ -7,8 +7,10 @@ import (
 	respModel "github.com/PereRohit/util/model"
 	"github.com/google/uuid"
 	"github.com/vatsal278/TransactionManagementService/internal/codes"
+	"github.com/vatsal278/TransactionManagementService/internal/config"
 	"github.com/vatsal278/TransactionManagementService/internal/model"
 	"github.com/vatsal278/TransactionManagementService/internal/repo/datasource"
+	"io/ioutil"
 	"math"
 	"net/http"
 	"time"
@@ -19,23 +21,23 @@ import (
 type TransactionManagementServiceLogicIer interface {
 	HealthCheck() bool
 	GetTransactions(id string, limit int, page int) *respModel.Response
+	DownloadTransaction(id string, cookie string) *respModel.Response
 	NewTransaction(transaction model.NewTransaction) *respModel.Response
 }
 
 type transactionManagementServiceLogic struct {
-	DsSvc  datasource.DataSourceI
-	AccSvc string
+	DsSvc   datasource.DataSourceI
+	UtilSvc config.ExternalSvc
 }
 
-func NewTransactionManagementServiceLogic(ds datasource.DataSourceI, as string) TransactionManagementServiceLogicIer {
+func NewTransactionManagementServiceLogic(ds datasource.DataSourceI, ut config.ExternalSvc) TransactionManagementServiceLogicIer {
 	return &transactionManagementServiceLogic{
-		DsSvc:  ds,
-		AccSvc: as,
+		DsSvc:   ds,
+		UtilSvc: ut,
 	}
 }
 
 func (l transactionManagementServiceLogic) HealthCheck() bool {
-	// check all internal services are working fine
 	return l.DsSvc.HealthCheck()
 }
 
@@ -101,7 +103,7 @@ func (l transactionManagementServiceLogic) NewTransaction(newTransaction model.N
 		}
 	}
 	go func(reqBody []byte) {
-		req, err := http.NewRequest("PUT", l.AccSvc+"/microbank/v1/account/update/transaction", bytes.NewReader(reqBody))
+		req, err := http.NewRequest("PUT", l.UtilSvc.AccSvcUrl+"/microbank/v1/account/update/transaction", bytes.NewReader(reqBody))
 		if err != nil {
 			log.Error(err)
 			return
@@ -118,5 +120,103 @@ func (l transactionManagementServiceLogic) NewTransaction(newTransaction model.N
 		Status:  http.StatusCreated,
 		Message: "SUCCESS",
 		Data:    nil,
+	}
+}
+
+func (l transactionManagementServiceLogic) DownloadTransaction(id string, cookie string) *respModel.Response {
+	transactions, _, err := l.DsSvc.Get(map[string]interface{}{"transaction_id": id}, 0, 0)
+	if err != nil {
+		log.Error(err)
+		return &respModel.Response{
+			Status:  http.StatusInternalServerError,
+			Message: codes.GetErr(codes.ErrGetTransaction),
+			Data:    nil,
+		}
+	}
+	if len(transactions) == 0 {
+		log.Error("no transaction with specified transaction_id found")
+		return &respModel.Response{
+			Status:  http.StatusBadRequest,
+			Message: codes.GetErr(codes.ErrGetTransaction),
+			Data:    nil,
+		}
+	}
+	req, err := http.NewRequest("GET", l.UtilSvc.UserSvc+"/microbank/v1/user", nil)
+	if err != nil {
+		log.Error(err)
+		return &respModel.Response{
+			Status:  http.StatusInternalServerError,
+			Message: codes.GetErr(codes.ErrFetchinDataUserSvc),
+			Data:    nil,
+		}
+	}
+	req.AddCookie(&http.Cookie{Name: "token", Value: cookie})
+	client := http.Client{Timeout: 2 * time.Second}
+	response, err := client.Do(req)
+	if err != nil {
+		log.Error(err)
+		return &respModel.Response{
+			Status:  http.StatusInternalServerError,
+			Message: codes.GetErr(codes.ErrFetchinDataUserSvc),
+			Data:    nil,
+		}
+	}
+	if response.StatusCode != http.StatusOK {
+		log.Info("Status Not OK", response.StatusCode)
+		return &respModel.Response{
+			Status:  http.StatusInternalServerError,
+			Message: codes.GetErr(codes.ErrFetchinDataUserSvc),
+			Data:    nil,
+		}
+	}
+	var userResp respModel.Response
+	by, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return &respModel.Response{
+			Status:  http.StatusInternalServerError,
+			Message: codes.GetErr(codes.ErrReadingReqBody),
+			Data:    nil,
+		}
+	}
+	err = json.Unmarshal(by, &userResp)
+	if err != nil {
+		log.Error(err)
+		return &respModel.Response{
+			Status:  http.StatusInternalServerError,
+			Message: codes.GetErr(codes.ErrUnmarshall),
+			Data:    nil,
+		}
+	}
+	user, ok := userResp.Data.(map[string]interface{})
+	if !ok {
+		return &respModel.Response{
+			Status:  http.StatusInternalServerError,
+			Message: codes.GetErr(codes.ErrAssertResp),
+			Data:    nil,
+		}
+	}
+	pdfSvc := l.UtilSvc.PdfSvc.PdfService
+	pdf, err := pdfSvc.GeneratePdf(map[string]interface{}{
+		"Name":                      user["Name"],
+		"TransferFromAccountNumber": transactions[0].AccountNumber,
+		"TransferToAccountNumber":   transactions[0].TransferTo,
+		"TransactionId":             transactions[0].TransactionId,
+		"Amount":                    transactions[0].Amount,
+		"Date":                      transactions[0].CreatedAt,
+		"Status":                    transactions[0].Status,
+		"Type":                      transactions[0].Type,
+		"Comment":                   transactions[0].Comment,
+	}, l.UtilSvc.PdfSvc.UuId)
+	if err != nil {
+		return &respModel.Response{
+			Status:  http.StatusInternalServerError,
+			Message: codes.GetErr(codes.ErrPdf),
+			Data:    nil,
+		}
+	}
+	return &respModel.Response{
+		Status:  http.StatusOK,
+		Message: "SUCCESS",
+		Data:    pdf,
 	}
 }

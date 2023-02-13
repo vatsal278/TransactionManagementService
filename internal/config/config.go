@@ -8,28 +8,34 @@ import (
 	"github.com/vatsal278/TransactionManagementService/internal/model"
 	"github.com/vatsal278/TransactionManagementService/internal/repo/authentication"
 	"github.com/vatsal278/go-redis-cache"
+	"github.com/vatsal278/html-pdf-service/pkg/sdk"
+	"os"
 	"time"
 )
 
 type Config struct {
 	ServiceRouteVersion string              `json:"service_route_version"`
 	ServerConfig        config.ServerConfig `json:"server_config"`
-	// add custom config structs below for any internal services
-	DataBase  DbCfg        `json:"db_svc"`
-	SecretKey string       `json:"secret_key"`
-	Cookie    CookieStruct `json:"cookie"`
-	Cache     CacheCfg     `json:"cache"`
-	AccSvcUrl string       `json:"acc_svc_url"`
+	DataBase            DbCfg               `json:"db_svc"`
+	SecretKey           string              `json:"secret_key"`
+	Cookie              CookieStruct        `json:"cookie"`
+	Cache               CacheCfg            `json:"cache"`
+	AccSvcUrl           string              `json:"acc_svc_url"`
+	PdfServiceUrl       string              `json:"pdf_svc_url"`
+	UserSvcUrl          string              `json:"user_svc_url"`
+	HtmlTemplateFile    string              `json:"html_template_file_path"`
+	TemplateUuid        string              `json:"html_template_file_uuid"`
 }
 
 type SvcConfig struct {
 	Cfg                 *Config
 	ServiceRouteVersion string
 	SvrCfg              config.ServerConfig
-	// add internal services after init
-	DbSvc  DbSvc
-	JwtSvc JWTSvc
-	Cacher CacherSvc
+	DbSvc               DbSvc
+	JwtSvc              JWTSvc
+	Cacher              CacherSvc
+	PdfSvc              PdfSvc
+	ExternalService     ExternalSvc
 }
 type DbSvc struct {
 	Db *sql.DB
@@ -61,6 +67,15 @@ type CacheCfg struct {
 }
 type CacherSvc struct {
 	Cacher redis.Cacher
+}
+type PdfSvc struct {
+	PdfService sdk.HtmlToPdfSvcI
+	UuId       string
+}
+type ExternalSvc struct {
+	AccSvcUrl string
+	PdfSvc    PdfSvc
+	UserSvc   string
 }
 
 func Connect(cfg DbCfg, tableName string) *sql.DB {
@@ -102,6 +117,23 @@ func InitSvcConfig(cfg Config) *SvcConfig {
 		panic(err.Error())
 	}
 	cfg.Cache.Time = duration
+	pdfSvcI := sdk.NewHtmlToPdfSvc(cfg.PdfServiceUrl)
+	if cfg.TemplateUuid == "" {
+		file, err := os.ReadFile(cfg.HtmlTemplateFile)
+		if err != nil {
+			panic(err.Error())
+		}
+		uuid, err := pdfSvcI.Register(file)
+		if err != nil {
+			panic(err.Error())
+		}
+		cfg.TemplateUuid = uuid
+	}
+	utilSvc := ExternalSvc{
+		AccSvcUrl: cfg.AccSvcUrl,
+		UserSvc:   cfg.UserSvcUrl,
+		PdfSvc:    PdfSvc{PdfService: pdfSvcI, UuId: cfg.TemplateUuid},
+	}
 	return &SvcConfig{
 		Cfg:                 &cfg,
 		ServiceRouteVersion: cfg.ServiceRouteVersion,
@@ -109,5 +141,6 @@ func InitSvcConfig(cfg Config) *SvcConfig {
 		DbSvc:               DbSvc{Db: dataBase},
 		JwtSvc:              JWTSvc{JwtSvc: jwtSvc},
 		Cacher:              CacherSvc{Cacher: cacher},
+		ExternalService:     utilSvc,
 	}
 }

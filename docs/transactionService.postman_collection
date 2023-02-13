@@ -1,0 +1,97 @@
+{
+	"info": {
+		"_postman_id": "23f4dfa5-c788-4553-98c0-8845884c58d2",
+		"name": "transaction service",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "21239620"
+	},
+	"item": [
+		{
+			"name": "New transaction",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"account_number\":1,\r\n  \"amount\": 1000,\r\n  \"status\":\"approved\",\r\n  \"transafer_to\":2,\r\n  \"comment\":\"no comment\",\r\n  \"type\":\"debit\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:9070/microbank/v1/transactions/new",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "9070",
+					"path": [
+						"microbank",
+						"v1",
+						"transactions",
+						"new"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "list transaction",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:9070/microbank/v1/transactions",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "9070",
+					"path": [
+						"microbank",
+						"v1",
+						"transactions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Download transaction",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:9070/microbank/v1/transactions/download/77a91e44-64b5-4d49-8834-7a581c54a232",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "9070",
+					"path": [
+						"microbank",
+						"v1",
+						"transactions",
+						"download",
+						"77a91e44-64b5-4d49-8834-7a581c54a232"
+					],
+					"query": [
+						{
+							"key": "limit",
+							"value": "3",
+							"disabled": true
+						},
+						{
+							"key": "offset",
+							"value": "0",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
