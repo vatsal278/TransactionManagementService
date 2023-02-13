@@ -494,7 +494,7 @@ func TestTransactionMgmtMiddleware_Cacher(t *testing.T) {
 				}
 				expected := &model.Response{
 					Status:  http.StatusBadRequest,
-					Message: codes.GetErr(codes.ErrGetTransaction),
+					Message: codes.GetErr(codes.ErrUnmarshall),
 					Data:    nil,
 				}
 				if !reflect.DeepEqual(&result, expected) {

@@ -114,7 +114,7 @@ func (t TransactionMgmtMiddleware) Cacher(requireAuth bool) func(http.Handler) h
 				err = json.Unmarshal(by, &cacheResponse)
 				if err != nil {
 					log.Error(err)
-					response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrGetTransaction), nil)
+					response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrUnmarshall), nil)
 					return
 				}
 				w.Header().Set("Content-Type", cacheResponse.ContentType)
