@@ -264,7 +264,7 @@ func TestSqlDs_Insert(t *testing.T) {
 			},
 			validator: func(mock sqlmock.Sqlmock, err error) {
 				if mock.ExpectationsWereMet() != nil {
-					t.Errorf("Want: %v, Got: %v", nil, err.Error())
+					t.Errorf("Want: %v, Got: %v", nil, mock.ExpectationsWereMet())
 					return
 				}
 				if err != nil {
