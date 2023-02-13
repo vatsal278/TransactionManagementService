@@ -42,6 +42,9 @@ func TestInitSvcConfig(t *testing.T) {
 	router.HandleFunc("/v1/register", func(w http.ResponseWriter, r *http.Request) {
 		response.ToJson(w, http.StatusOK, "Success", map[string]interface{}{"id": "123"})
 	})
+	router.HandleFunc("/v1/registerfail", func(w http.ResponseWriter, r *http.Request) {
+		response.ToJson(w, http.StatusInternalServerError, "Success", nil)
+	})
 	srv := httptest.NewServer(router)
 	tests := []testCase{
 		{
@@ -59,6 +62,141 @@ func TestInitSvcConfig(t *testing.T) {
 							DbName: "newTemp",
 						},
 						Cache:            CacheCfg{Duration: "1m"},
+						Cookie:           CookieStruct{ExpiryStr: "5m"},
+						PdfServiceUrl:    srv.URL,
+						HtmlTemplateFile: "./../../docs/transaction-template.html",
+					},
+				}
+			},
+			want: func(arg args) *SvcConfig {
+				required := &SvcConfig{
+					JwtSvc: JWTSvc{JwtSvc: jwtSvc.JWTAuthService("")},
+					Cfg: &Config{
+						ServiceRouteVersion: "v2",
+						ServerConfig:        config.ServerConfig{},
+						DataBase: DbCfg{
+							Driver: "sqlmock",
+							DbName: "newTemp",
+						},
+						Cache:            CacheCfg{Duration: "1m", Time: time.Minute},
+						Cookie:           CookieStruct{ExpiryStr: "5m"},
+						PdfServiceUrl:    srv.URL,
+						HtmlTemplateFile: "./../../docs/transaction-template.html",
+						TemplateUuid:     "123",
+					},
+					ServiceRouteVersion: "v2",
+					SvrCfg:              config.ServerConfig{},
+					PdfSvc:              PdfSvc{},
+					ExternalService:     ExternalSvc{PdfSvc: PdfSvc{UuId: "123"}},
+				}
+				return required
+			},
+		},
+		{
+			name: "Failure::Register file failure",
+			args: func() args {
+				mock.ExpectPrepare("CREATE SCHEMA IF NOT EXISTS newTemp ;").ExpectExec().WillReturnError(nil).WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectClose()
+				mock2.ExpectExec(regexp.QuoteMeta("create table if not exists ( transaction_id VARCHAR(255) NOT NULL PRIMARY KEY, account_number INT NOT NULL, user_id VARCHAR(255) NOT NULL, amount DECIMAL(18,2) NOT NULL DEFAULT 0.00, transfer_to VARCHAR(255) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, status VARCHAR(255) NOT NULL, type VARCHAR(255) NOT NULL, comment VARCHAR(255) );")).WillReturnError(nil).WillReturnResult(sqlmock.NewResult(1, 1))
+				return args{
+					cfg: Config{
+						ServiceRouteVersion: "v2",
+						ServerConfig:        config.ServerConfig{},
+						DataBase: DbCfg{
+							Driver: "sqlmock",
+							DbName: "newTemp",
+						},
+						Cache:            CacheCfg{Duration: "1m"},
+						Cookie:           CookieStruct{ExpiryStr: "5m"},
+						PdfServiceUrl:    srv.URL + "fail",
+						HtmlTemplateFile: "./../../docs/transaction-template.html",
+					},
+				}
+			},
+			want: func(arg args) *SvcConfig {
+				required := &SvcConfig{
+					JwtSvc: JWTSvc{JwtSvc: jwtSvc.JWTAuthService("")},
+					Cfg: &Config{
+						ServiceRouteVersion: "v2",
+						ServerConfig:        config.ServerConfig{},
+						DataBase: DbCfg{
+							Driver: "sqlmock",
+							DbName: "newTemp",
+						},
+						Cache:            CacheCfg{Duration: "1m", Time: time.Minute},
+						Cookie:           CookieStruct{ExpiryStr: "5m"},
+						PdfServiceUrl:    srv.URL,
+						HtmlTemplateFile: "./../../docs/transaction-template.html",
+						TemplateUuid:     "123",
+					},
+					ServiceRouteVersion: "v2",
+					SvrCfg:              config.ServerConfig{},
+					PdfSvc:              PdfSvc{},
+					ExternalService:     ExternalSvc{PdfSvc: PdfSvc{UuId: "123"}},
+				}
+				return required
+			},
+		},
+		{
+			name: "Failure::error file not found",
+			args: func() args {
+				mock.ExpectPrepare("CREATE SCHEMA IF NOT EXISTS newTemp ;").ExpectExec().WillReturnError(nil).WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectClose()
+				mock2.ExpectExec(regexp.QuoteMeta("create table if not exists ( transaction_id VARCHAR(255) NOT NULL PRIMARY KEY, account_number INT NOT NULL, user_id VARCHAR(255) NOT NULL, amount DECIMAL(18,2) NOT NULL DEFAULT 0.00, transfer_to VARCHAR(255) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, status VARCHAR(255) NOT NULL, type VARCHAR(255) NOT NULL, comment VARCHAR(255) );")).WillReturnError(nil).WillReturnResult(sqlmock.NewResult(1, 1))
+				return args{
+					cfg: Config{
+						ServiceRouteVersion: "v2",
+						ServerConfig:        config.ServerConfig{},
+						DataBase: DbCfg{
+							Driver: "sqlmock",
+							DbName: "newTemp",
+						},
+						Cache:            CacheCfg{Duration: "1m"},
+						Cookie:           CookieStruct{ExpiryStr: "5m"},
+						PdfServiceUrl:    srv.URL,
+						HtmlTemplateFile: "",
+					},
+				}
+			},
+			want: func(arg args) *SvcConfig {
+				required := &SvcConfig{
+					JwtSvc: JWTSvc{JwtSvc: jwtSvc.JWTAuthService("")},
+					Cfg: &Config{
+						ServiceRouteVersion: "v2",
+						ServerConfig:        config.ServerConfig{},
+						DataBase: DbCfg{
+							Driver: "sqlmock",
+							DbName: "newTemp",
+						},
+						Cache:            CacheCfg{Duration: "1m", Time: time.Minute},
+						Cookie:           CookieStruct{ExpiryStr: "5m"},
+						PdfServiceUrl:    srv.URL,
+						HtmlTemplateFile: "./../../docs/transaction-template.html",
+						TemplateUuid:     "123",
+					},
+					ServiceRouteVersion: "v2",
+					SvrCfg:              config.ServerConfig{},
+					PdfSvc:              PdfSvc{},
+					ExternalService:     ExternalSvc{PdfSvc: PdfSvc{UuId: "123"}},
+				}
+				return required
+			},
+		},
+		{
+			name: "Failure:: Parse time error",
+			args: func() args {
+				mock.ExpectPrepare("CREATE SCHEMA IF NOT EXISTS newTemp ;").ExpectExec().WillReturnError(nil).WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectClose()
+				mock2.ExpectExec(regexp.QuoteMeta("create table if not exists ( transaction_id VARCHAR(255) NOT NULL PRIMARY KEY, account_number INT NOT NULL, user_id VARCHAR(255) NOT NULL, amount DECIMAL(18,2) NOT NULL DEFAULT 0.00, transfer_to VARCHAR(255) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, status VARCHAR(255) NOT NULL, type VARCHAR(255) NOT NULL, comment VARCHAR(255) );")).WillReturnError(nil).WillReturnResult(sqlmock.NewResult(1, 1))
+				return args{
+					cfg: Config{
+						ServiceRouteVersion: "v2",
+						ServerConfig:        config.ServerConfig{},
+						DataBase: DbCfg{
+							Driver: "sqlmock",
+							DbName: "newTemp",
+						},
+						Cache:            CacheCfg{Duration: "5"},
 						Cookie:           CookieStruct{ExpiryStr: "5m"},
 						PdfServiceUrl:    srv.URL,
 						HtmlTemplateFile: "./../../docs/transaction-template.html",
