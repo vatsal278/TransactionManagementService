@@ -399,6 +399,10 @@ func TestTransactionManagementServiceLogic_DownloadTransactions(t *testing.T) {
 						t.Errorf("Want: %v, Got: %v", "", err)
 						return
 					}
+					if val.Name != "token" {
+						t.Errorf("Want: %v, Got: %v", "", val.Value)
+						return
+					}
 					if val.Value != "123" {
 						t.Errorf("Want: %v, Got: %v", "", val.Value)
 						return
