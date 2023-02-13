@@ -50,9 +50,9 @@ func TestSqlDs_HealthCheck(t *testing.T) {
 func TestSqlDs_Get(t *testing.T) {
 	tests := []struct {
 		name      string
-		setupFunc func() sqlDs
+		setupFunc func() (sqlDs, sqlmock.Sqlmock)
 		filter    map[string]interface{}
-		validator func([]model.Transaction, int, error)
+		validator func([]model.Transaction, int, error, sqlmock.Sqlmock)
 	}{
 		{
 			name: "SUCCESS::Get",
@@ -60,7 +60,7 @@ func TestSqlDs_Get(t *testing.T) {
 				"user_id":        "1234",
 				"account_number": 1,
 			},
-			setupFunc: func() sqlDs {
+			setupFunc: func() (sqlDs, sqlmock.Sqlmock) {
 				db, mock, err := sqlmock.New()
 				if err != nil {
 					t.Fail()
@@ -71,9 +71,9 @@ func TestSqlDs_Get(t *testing.T) {
 				}
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(`transaction_id`) FROM newTemp WHERE user_id = '1234' AND account_number = 1")).WillReturnError(nil).WillReturnRows(sqlmock.NewRows([]string{"count(transaction_id)"}).AddRow("1"))
 				mock.ExpectQuery("SELECT transaction_id, account_number, user_id, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE user_id = '1234' AND account_number = 1 ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnRows(sqlmock.NewRows([]string{"transaction_id", "account_number", "user_id", "amount", "transfer_to", "created_at", "updated_at", "status", "type", "comment"}).AddRow("0000-1111-2222-3333", 1, "4444-1111-2222-3333", 1000, 1234567890, time.Date(2023, time.December, 1, 1, 1, 1, 0, time.UTC), time.Date(2023, time.December, 1, 1, 1, 1, 0, time.UTC), "approved", "debit", "no comments"))
-				return dB
+				return dB, mock
 			},
-			validator: func(rows []model.Transaction, count int, err error) {
+			validator: func(rows []model.Transaction, count int, err error, mock sqlmock.Sqlmock) {
 				temp := []model.Transaction{{
 					TransactionId: "0000-1111-2222-3333",
 					AccountNumber: 1,
@@ -86,6 +86,10 @@ func TestSqlDs_Get(t *testing.T) {
 					Type:          "debit",
 					Comment:       "no comments",
 				}}
+				if mock.ExpectationsWereMet() != nil {
+					t.Errorf("Want: %v, Got: %v", nil, mock.ExpectationsWereMet())
+					return
+				}
 				if err != nil {
 					t.Errorf("Want: %v, Got: %v", nil, err)
 					return
@@ -103,7 +107,7 @@ func TestSqlDs_Get(t *testing.T) {
 		{
 			name:   "FAILURE::Get:: get rows query error",
 			filter: map[string]interface{}{"userid": "1234"},
-			setupFunc: func() sqlDs {
+			setupFunc: func() (sqlDs, sqlmock.Sqlmock) {
 				db, mock, err := sqlmock.New()
 				if err != nil {
 					t.Fail()
@@ -114,9 +118,13 @@ func TestSqlDs_Get(t *testing.T) {
 				}
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(`transaction_id`) FROM newTemp WHERE userid = '1234'")).WillReturnError(nil).WillReturnRows(sqlmock.NewRows([]string{"transaction_id"}).AddRow("1").AddRow("2").AddRow("3"))
 				mock.ExpectQuery("SELECT transaction_id, account_number, user_id, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE userid = '1234' ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnError(errors.New("Unknown column"))
-				return dB
+				return dB, mock
 			},
-			validator: func(rows []model.Transaction, count int, err error) {
+			validator: func(rows []model.Transaction, count int, err error, mock sqlmock.Sqlmock) {
+				if mock.ExpectationsWereMet() != nil {
+					t.Errorf("Want: %v, Got: %v", nil, mock.ExpectationsWereMet())
+					return
+				}
 				if !strings.Contains(err.Error(), "Unknown column") {
 					t.Errorf("Want: %v, Got: %v", "Unknown column", err)
 				}
@@ -125,7 +133,7 @@ func TestSqlDs_Get(t *testing.T) {
 		{
 			name:   "FAILURE::Get:: get count query error",
 			filter: map[string]interface{}{"userid": "1234"},
-			setupFunc: func() sqlDs {
+			setupFunc: func() (sqlDs, sqlmock.Sqlmock) {
 				db, mock, err := sqlmock.New()
 				if err != nil {
 					t.Fail()
@@ -135,12 +143,17 @@ func TestSqlDs_Get(t *testing.T) {
 					table:  "newTemp",
 				}
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(`transaction_id`) FROM newTemp WHERE userid = '1234'")).WillReturnError(errors.New("query error")).WillReturnRows(sqlmock.NewRows([]string{"transaction_id"}).AddRow("1").AddRow("2").AddRow("3"))
-				return dB
+				return dB, mock
 			},
-			validator: func(rows []model.Transaction, count int, err error) {
+			validator: func(rows []model.Transaction, count int, err error, mock sqlmock.Sqlmock) {
+				if mock.ExpectationsWereMet() != nil {
+					t.Errorf("Want: %v, Got: %v", nil, mock.ExpectationsWereMet())
+					return
+				}
 				if !strings.Contains(err.Error(), "query error") {
 					t.Errorf("Want: %v, Got: %v", "query error", err)
 				}
+
 			},
 		},
 		{
@@ -148,7 +161,7 @@ func TestSqlDs_Get(t *testing.T) {
 			filter: map[string]interface{}{
 				"user_id": "1234",
 			},
-			setupFunc: func() sqlDs {
+			setupFunc: func() (sqlDs, sqlmock.Sqlmock) {
 				db, mock, err := sqlmock.New()
 				if err != nil {
 					t.Fail()
@@ -159,18 +172,22 @@ func TestSqlDs_Get(t *testing.T) {
 				}
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(`transaction_id`) FROM newTemp WHERE user_id = '1234'")).WillReturnError(nil).WillReturnRows(sqlmock.NewRows([]string{"transaction_id"}).AddRow("1").AddRow("2").AddRow("3"))
 				mock.ExpectQuery("SELECT transaction_id, account_number, user_id, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE user_id = '1234' ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnRows(sqlmock.NewRows([]string{"transaction_id", "account_number", "user_id", "amount", "transfer_to", "created_at", "updated_at", "status", "type", "comment"}).AddRow(true, 1, "123", 1000, 1234567890, time.Now(), "abc", "approved", "debit", "no comments"))
-				return dB
+				return dB, mock
 			},
-			validator: func(rows []model.Transaction, count int, err error) {
+			validator: func(rows []model.Transaction, count int, err error, mock sqlmock.Sqlmock) {
 				if !strings.Contains(err.Error(), "sql: Scan error on column") {
 					t.Errorf("Want: %v, Got: %v", "sql: Scan error on column", err.Error())
+				}
+				if mock.ExpectationsWereMet() != nil {
+					t.Errorf("Want: %v, Got: %v", nil, mock.ExpectationsWereMet())
+					return
 				}
 			},
 		},
 		{
 			name:   "FAILURE::Get:: get count scan error",
 			filter: map[string]interface{}{"userid": "1234"},
-			setupFunc: func() sqlDs {
+			setupFunc: func() (sqlDs, sqlmock.Sqlmock) {
 				db, mock, err := sqlmock.New()
 				if err != nil {
 					t.Fail()
@@ -180,10 +197,13 @@ func TestSqlDs_Get(t *testing.T) {
 					table:  "newTemp",
 				}
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT COUNT(`transaction_id`) FROM newTemp WHERE userid = '1234'")).WillReturnError(nil).WillReturnRows(sqlmock.NewRows([]string{"count(transaction_id)"}).AddRow(true))
-				mock.ExpectQuery("SELECT transaction_id, account_number, user_id, amount, transfer_to, created_at, updated_at, status, type, comment FROM newTemp WHERE userid = '1234' ORDER BY created_at LIMIT 1 OFFSET 2 ;").WillReturnRows(sqlmock.NewRows([]string{"1"}))
-				return dB
+				return dB, mock
 			},
-			validator: func(rows []model.Transaction, count int, err error) {
+			validator: func(rows []model.Transaction, count int, err error, mock sqlmock.Sqlmock) {
+				if mock.ExpectationsWereMet() != nil {
+					t.Errorf("Want: %v, Got: %v", nil, mock.ExpectationsWereMet())
+					return
+				}
 				if !strings.Contains(err.Error(), "sql: Scan error") {
 					t.Errorf("Want: %v, Got: %v", "sql: Scan error", err)
 				}
@@ -195,13 +215,13 @@ func TestSqlDs_Get(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// STEP 1: seting up all instances for the specific test case
-			db := tt.setupFunc()
+			db, mock := tt.setupFunc()
 			// STEP 2: call the test function
 			rows, count, err := db.Get(tt.filter, 1, 2)
 
 			// STEP 3: validation of output
 			if tt.validator != nil {
-				tt.validator(rows, count, err)
+				tt.validator(rows, count, err, mock)
 			}
 		})
 	}
@@ -244,7 +264,7 @@ func TestSqlDs_Insert(t *testing.T) {
 			},
 			validator: func(mock sqlmock.Sqlmock, err error) {
 				if mock.ExpectationsWereMet() != nil {
-					t.Errorf("Want: %v, Got: %v", nil, err.Error())
+					t.Errorf("Want: %v, Got: %v", nil, mock.ExpectationsWereMet())
 					return
 				}
 				if err != nil {
@@ -281,6 +301,10 @@ func TestSqlDs_Insert(t *testing.T) {
 				return dB, mock
 			},
 			validator: func(mock sqlmock.Sqlmock, err error) {
+				if mock.ExpectationsWereMet() != nil {
+					t.Errorf("Want: %v, Got: %v", nil, mock.ExpectationsWereMet())
+					return
+				}
 				if err.Error() != errors.New("sql error").Error() {
 					t.Errorf("Want: %v, Got: %v", "sql error", err.Error())
 					return
