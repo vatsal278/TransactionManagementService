@@ -43,12 +43,11 @@ func attachTransactionManagementServiceRoutes(m *mux.Router, svcCfg *config.SvcC
 
 	router := m.PathPrefix("").Subrouter()
 	router.HandleFunc("", svc.NewTransaction).Methods(http.MethodPost)
-
+	router.HandleFunc("/download/{transaction_id}", svc.DownloadTransaction).Methods(http.MethodGet)
 	router.Use(middleware.ExtractUser)
 
 	router2 := m.PathPrefix("").Subrouter()
 	router2.HandleFunc("", svc.GetTransactions).Methods(http.MethodGet)
-	router2.HandleFunc("/download/{transaction_id}", svc.DownloadTransaction).Methods(http.MethodGet)
 	router2.Use(middleware.ExtractUser)
 	router2.Use(middleware.Cacher(true))
 
