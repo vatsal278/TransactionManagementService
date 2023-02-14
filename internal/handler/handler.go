@@ -19,6 +19,8 @@ import (
 
 const TransactionManagementServiceName = "transactionManagementService"
 
+//go:generate mockgen --build_flags=--mod=mod --destination=./../../pkg/mock/mock_handler.go --package=mock github.com/vatsal278/TransactionManagementService/internal/handler TransactionManagementServiceHandler
+
 // TransactionManagementServiceHandler defines the interface for the Transaction Management Service.
 // It defines the methods that can be implemented by the transactionManagementService struct.
 type TransactionManagementServiceHandler interface {

@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+//go:generate mockgen --build_flags=--mod=mod --destination=./../../pkg/mock/mock_logic.go --package=mock github.com/vatsal278/TransactionManagementService/internal/logic TransactionManagementServiceLogicIer
+
 // TransactionManagementServiceLogicIer defines the interface for the transaction management service logic
 type TransactionManagementServiceLogicIer interface {
 	HealthCheck() bool
