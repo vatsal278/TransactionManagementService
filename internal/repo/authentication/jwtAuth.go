@@ -9,6 +9,7 @@ import (
 
 //go:generate mockgen --build_flags=--mod=mod --destination=./../../../pkg/mock/mock_jwt.go --package=mock github.com/vatsal278/TransactionManagementService/internal/repo/authentication JWTService
 
+// JWTService defines the interface for JWT authentication service
 type JWTService interface {
 	GenerateToken(signingMethod jwt.SigningMethod, userId string, validity time.Duration) (string, error)
 	ValidateToken(token string) (*jwt.Token, error)
@@ -24,12 +25,14 @@ type jwtService struct {
 	userId    string
 }
 
+// JWTAuthService returns a new instance of JWT authentication service
 func JWTAuthService(secret string) JWTService {
 	return &jwtService{
 		secretKey: getSecretKey(secret),
 	}
 }
 
+// getSecretKey returns the default secret key if it is not provided
 func getSecretKey(secret string) string {
 	if secret == "" {
 		secret = "DefaultSecretJwtKey"
@@ -37,6 +40,7 @@ func getSecretKey(secret string) string {
 	return secret
 }
 
+// GenerateToken generates a new JWT token
 func (service *jwtService) GenerateToken(signingMethod jwt.SigningMethod, userId string, validity time.Duration) (string, error) {
 	var currentTime = time.Now().UTC()
 	claims := &authCustomClaims{
@@ -56,6 +60,7 @@ func (service *jwtService) GenerateToken(signingMethod jwt.SigningMethod, userId
 	return t, nil
 }
 
+// ValidateToken validates a JWT token
 func (service *jwtService) ValidateToken(encodedToken string) (*jwt.Token, error) {
 	return jwt.Parse(encodedToken, func(token *jwt.Token) (interface{}, error) {
 		_, ok := token.Method.(*jwt.SigningMethodHMAC)

@@ -21,6 +21,8 @@ const TransactionManagementServiceName = "transactionManagementService"
 
 //go:generate mockgen --build_flags=--mod=mod --destination=./../../pkg/mock/mock_handler.go --package=mock github.com/vatsal278/TransactionManagementService/internal/handler TransactionManagementServiceHandler
 
+// TransactionManagementServiceHandler defines the interface for the Transaction Management Service.
+// It defines the methods that can be implemented by the transactionManagementService struct.
 type TransactionManagementServiceHandler interface {
 	HealthChecker
 	GetTransactions(w http.ResponseWriter, r *http.Request)
@@ -28,18 +30,24 @@ type TransactionManagementServiceHandler interface {
 	DownloadTransaction(w http.ResponseWriter, r *http.Request)
 }
 
+// transactionManagementService implements TransactionManagementServiceHandler.
+// It has a single field, logic of type logic.TransactionManagementServiceLogicIer, that is used to execute business logic.
 type transactionManagementService struct {
 	logic logic.TransactionManagementServiceLogicIer
 }
 
+// NewTransactionManagementService is a factory method that returns a new TransactionManagementServiceHandler
+// It creates a new transactionManagementService and returns it after registering the service with the global health checker.
 func NewTransactionManagementService(ds datasource.DataSourceI, ut config.ExternalSvc) TransactionManagementServiceHandler {
 	svc := &transactionManagementService{
 		logic: logic.NewTransactionManagementServiceLogic(ds, ut),
 	}
-	AddHealthChecker(svc)
+	AddHealthChecker(svc) // registers this service with the global health checker
 	return svc
 }
 
+// HealthCheck returns the health status of the Transaction Management Service.
+// It delegates the responsibility of executing the health check to the logic layer.
 func (svc transactionManagementService) HealthCheck() (svcName string, msg string, stat bool) {
 	set := false
 	defer func() {
@@ -54,6 +62,8 @@ func (svc transactionManagementService) HealthCheck() (svcName string, msg strin
 	return
 }
 
+// GetTransactions returns a paginated list of transactions for the user.
+// It extracts the user id from the session and retrieves the transactions using the logic layer.
 func (svc transactionManagementService) GetTransactions(w http.ResponseWriter, r *http.Request) {
 	sessionStruct := session.GetSession(r.Context())
 	session, ok := sessionStruct.(model.SessionStruct)
@@ -76,13 +86,16 @@ func (svc transactionManagementService) GetTransactions(w http.ResponseWriter, r
 	response.ToJson(w, resp.Status, resp.Message, resp.Data)
 }
 
+// NewTransaction creates a new transaction for the logged-in user using the data from the request body.
 func (svc transactionManagementService) NewTransaction(w http.ResponseWriter, r *http.Request) {
+	// Extract the user session from the request context.
 	sessionStruct := session.GetSession(r.Context())
 	session, ok := sessionStruct.(model.SessionStruct)
 	if !ok {
 		response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrAssertUserid), nil)
 		return
 	}
+	// Parse the request body and validate the data.
 	var newTransaction model.NewTransaction
 	status, err := request.FromJson(r, &newTransaction)
 	if err != nil {
@@ -90,29 +103,35 @@ func (svc transactionManagementService) NewTransaction(w http.ResponseWriter, r 
 		response.ToJson(w, status, err.Error(), nil)
 		return
 	}
-
+	// Set the user ID for the new transaction and pass it to the business logic.
 	newTransaction.UserId = session.UserId
 	resp := svc.logic.NewTransaction(newTransaction)
+	// Return the response to the client in JSON format.
 	response.ToJson(w, resp.Status, resp.Message, resp.Data)
 }
 
+// DownloadTransaction downloads a PDF file for a specific transaction ID belonging to the logged-in user.
 func (svc transactionManagementService) DownloadTransaction(w http.ResponseWriter, r *http.Request) {
+	// Extract the user session from the request context.
 	sessionStruct := session.GetSession(r.Context())
 	session, ok := sessionStruct.(model.SessionStruct)
 	if !ok {
 		response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrAssertUserid), nil)
 		return
 	}
+	// Extract the transaction ID from the request parameters.
 	vars := mux.Vars(r)
 	if len(vars) == 0 {
 		response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrGetTransaction), nil)
 		return
 	}
+	// Download the PDF file for the given transaction ID and user session.
 	resp := svc.logic.DownloadTransaction(vars["transaction_id"], session.Cookie)
 	if resp.Status != http.StatusOK {
 		response.ToJson(w, resp.Status, resp.Message, resp.Data)
 		return
 	}
+	// Verify that the response data is a valid PDF byte slice and write it to the response writer.
 	pdf, ok := resp.Data.([]byte)
 	if !ok {
 		response.ToJson(w, http.StatusBadRequest, codes.GetErr(codes.ErrAssertPdf), nil)
@@ -124,6 +143,7 @@ func (svc transactionManagementService) DownloadTransaction(w http.ResponseWrite
 		response.ToJson(w, http.StatusInternalServerError, codes.GetErr(codes.ErrPdf), nil)
 		return
 	}
+	// Set the appropriate headers for the PDF file download.
 	w.Header().Set("Content-Disposition", "attachment; filename="+vars["transaction_id"]+".pdf")
 	w.Header().Set("Content-Type", "application/pdf")
 }

@@ -13,6 +13,7 @@ type sqlDs struct {
 	table  string
 }
 
+// NewSql creates a new instance of sqlDs with a given database service and table name.
 func NewSql(dbSvc config.DbSvc, tableName string) DataSourceI {
 	return &sqlDs{
 		sqlSvc: dbSvc.Db,
@@ -20,6 +21,7 @@ func NewSql(dbSvc config.DbSvc, tableName string) DataSourceI {
 	}
 }
 
+// queryFromMap returns a string containing SQL queries generated from a given map of filters and a join separator.
 func queryFromMap(d map[string]interface{}, join string) string {
 	var (
 		q string
@@ -39,11 +41,13 @@ func queryFromMap(d map[string]interface{}, join string) string {
 	return q
 }
 
+// HealthCheck checks the health of the database service.
 func (d sqlDs) HealthCheck() bool {
 	err := d.sqlSvc.Ping()
 	return err == nil
 }
 
+// Get retrieves transactions from the database service based on a given set of filters, limit, and offset.
 func (d sqlDs) Get(filter map[string]interface{}, limit int, offset int) ([]model.Transaction, int, error) {
 	var transaction model.Transaction
 	var transactions []model.Transaction
@@ -85,6 +89,7 @@ func (d sqlDs) Get(filter map[string]interface{}, limit int, offset int) ([]mode
 	return transactions, count, nil
 }
 
+// Insert adds a new transaction to the database service.
 func (d sqlDs) Insert(transaction model.Transaction) error {
 	queryString := fmt.Sprintf("INSERT INTO %s", d.table)
 	_, err := d.sqlSvc.Exec(queryString+"(user_id, transaction_id, account_number, amount, transfer_to, status, type, comment) VALUES(?,?,?,?,?,?,?,?)", transaction.UserId, transaction.TransactionId, transaction.AccountNumber, transaction.Amount, transaction.TransferTo, transaction.Status, transaction.Type, transaction.Comment)
